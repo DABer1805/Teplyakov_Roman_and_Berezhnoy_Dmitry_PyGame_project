@@ -75,7 +75,7 @@ def terminate():
     sys.exit()
 
 
-player, level_x, level_y = generate_level(load_level("data/level_1.txt"))
+player, level_x, level_y = generate_level(load_level("level_1.txt"))
 camera = Camera((level_x, level_y))
 
 running = True
