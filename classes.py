@@ -41,11 +41,18 @@ class Camera:
             self.dy = -(target.rect.y + target.rect.h // 2 - HEIGHT // 2)
 
 
-class Player(pygame.sprite.Sprite):
-    def __init__(self, player_group, all_sprites, player_image, hp,
-                 pos_x, pos_y):
-        super().__init__(player_group, all_sprites)
-        self.image = player_image
+class Entity(pygame.sprite.Sprite):
+    def __init__(self, entity_group, all_sprites,
+                 entity_image, pos_x, pos_y):
+        super().__init__(entity_group, all_sprites)
+        self.image = entity_image
         self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x + 15,
                                                TILE_HEIGHT * pos_y + 5)
+
+
+class Player(Entity):
+    def __init__(self, player_group, all_sprites, player_image, hp,
+                 pos_x, pos_y):
+        super().__init__(player_group, all_sprites, player_image,
+                         pos_x, pos_y)
         self.hp = hp
