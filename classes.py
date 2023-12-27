@@ -5,6 +5,7 @@ from constants import TILE_WIDTH, TILE_HEIGHT, WIDTH, HEIGHT
 
 
 class Tile(pygame.sprite.Sprite):
+    """ Тайл """
     def __init__(self, tiles_group, all_sprites, tile_type,
                  tile_images, pos_x, pos_y):
         super().__init__(tiles_group, all_sprites)
