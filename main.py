@@ -4,7 +4,7 @@ import pygame
 
 from constants import WIDTH, HEIGHT, FPS, STEP
 
-from classes import Player, Tile, Camera
+from classes import Player, Wall, Box, Camera
 
 pygame.init()
 pygame.key.set_repeat(200, 70)
@@ -58,13 +58,13 @@ def generate_level(level):
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == '#':
-                Tile(tiles_group, all_sprites, 'brick', tile_images,
+                Wall(tiles_group, all_sprites, tile_images,
                      x, y)
             elif level[y][x] == '@':
                 new_player = Player(player_group, all_sprites, player_image,
                                     5, x, y)
             elif level[y][x] == ':':
-                Tile(tiles_group, all_sprites, 'box', tile_images,
+                Box(tiles_group, all_sprites, tile_images,
                      x, y)
     # вернем игрока, а также размер поля в клетках
     return new_player, x, y
@@ -79,6 +79,7 @@ player, level_x, level_y = generate_level(load_level("level_1.txt"))
 camera = Camera((level_x, level_y))
 
 running = True
+collide_side = ''
 
 while running:
 
@@ -87,13 +88,34 @@ while running:
             running = False
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_a:
-                player.rect.x -= STEP
+                if not pygame.sprite.spritecollideany(player, tiles_group):
+                    player.rect.x -= STEP
+                    collide_side = ''
+                elif collide_side != 'left' and collide_side:
+                    player.rect.x -= STEP
+                    collide_side = ''
+                else:
+                    collide_side = 'left'
             if event.key == pygame.K_d:
-                player.rect.x += STEP
+                if not pygame.sprite.spritecollideany(player, tiles_group):
+                    player.rect.x += STEP
+                    collide_side = ''
+                elif collide_side != 'right' and collide_side:
+                    player.rect.x += STEP
+                    collide_side = ''
+                else:
+                    collide_side = 'right'
             if event.key == pygame.K_SPACE:
-                player.rect.y -= STEP
+                if not pygame.sprite.spritecollideany(player, tiles_group):
+                    player.rect.y -= STEP
+                    collide_side = ''
+                elif collide_side != 'up' and collide_side:
+                    player.rect.y -= STEP
+                    collide_side = ''
+                else:
+                    collide_side = 'up'
 
-    camera.update(player)
+    camera.update(player, tiles_group)
 
     for sprite in all_sprites:
         camera.apply(sprite)
