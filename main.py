@@ -2,24 +2,40 @@ import os
 import sys
 import pygame
 
-from constants import WIDTH, HEIGHT, FPS, STEP
+from constants import WIDTH, HEIGHT, FPS, STEP, DIRECTION_LEFT, \
+    DIRECTION_RIGHT
 
-from classes import Player, Tile, Camera
+from classes import Player, Tile, Camera, Bullet
 
+# Задаём параметры приложения
 pygame.init()
 pygame.key.set_repeat(200, 70)
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 
+# Фоновая музыка
+pygame.mixer.music.load("data/sounds/main_saundtrack.mp3")
+pygame.mixer.music.play()
+
+# Игрок
 player = None
+
+# Все спрайты
 all_sprites = pygame.sprite.Group()
-tiles_group = pygame.sprite.Group()
+# Спрайты коробок
+boxes_group = pygame.sprite.Group()
+# Спрайты кирпичных блоков
+bricks_group = pygame.sprite.Group()
+# Спрайты, где есть игрок
 player_group = pygame.sprite.Group()
+# Спрайты пулей
+bullet_group = pygame.sprite.Group()
 
 
 def load_image(name, color_key=None):
-    fullname = os.path.join('data', name)
+    """ Загрузчик изображений """
+    fullname = os.path.join('data', 'images', name)
     try:
         image = pygame.image.load(fullname)
     except pygame.error as message:
@@ -33,11 +49,6 @@ def load_image(name, color_key=None):
     else:
         image = image.convert_alpha()
     return image
-
-
-tile_images = {'brick': load_image('bricks.png'),
-               'box': load_image('box.png')}
-player_image = load_image('mario.png')
 
 
 def load_level(filename):
@@ -58,13 +69,13 @@ def generate_level(level):
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == '#':
-                Tile(tiles_group, all_sprites, 'brick', tile_images,
+                Tile(bricks_group, all_sprites, 'brick', TILE_IMAGES,
                      x, y)
             elif level[y][x] == '@':
-                new_player = Player(player_group, all_sprites, player_image,
+                new_player = Player(player_group, all_sprites, PLAYER_IMAGE,
                                     5, x, y)
             elif level[y][x] == ':':
-                Tile(tiles_group, all_sprites, 'box', tile_images,
+                Tile(boxes_group, all_sprites, 'box', TILE_IMAGES,
                      x, y)
     # вернем игрока, а также размер поля в клетках
     return new_player, x, y
@@ -74,6 +85,14 @@ def terminate():
     pygame.quit()
     sys.exit()
 
+
+# Изображениями тайлов
+TILE_IMAGES = {'brick': load_image('bricks.png'),
+               'box': load_image('box.png')}
+# Изображение игрока
+PLAYER_IMAGE = load_image('Artur.png')
+# Изображение пули
+BULLET_IMAGE = load_image('bullet.png')
 
 player, level_x, level_y = generate_level(load_level("level_1.txt"))
 camera = Camera((level_x, level_y))
@@ -88,19 +107,34 @@ while running:
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_a:
                 player.rect.x -= STEP
+                player.direction = DIRECTION_LEFT
+                player.image = pygame.transform.flip(PLAYER_IMAGE,
+                                                     True, False)
             if event.key == pygame.K_d:
                 player.rect.x += STEP
+                player.direction = DIRECTION_RIGHT
+                player.image = PLAYER_IMAGE
             if event.key == pygame.K_SPACE:
-                player.rect.y -= STEP
+                pass  # TODO: реализовать прыжок персонажа
+            if event.key == pygame.K_f:
+                new_bul = Bullet(bullet_group, all_sprites, BULLET_IMAGE,
+                                 player.direction,
+                                 player.rect.x + player.rect.w,
+                                 player.rect.y + player.rect.h // 2)
 
     camera.update(player)
 
     for sprite in all_sprites:
         camera.apply(sprite)
 
+    for bullet in bullet_group:
+        bullet.update([boxes_group], [bricks_group])
+
     screen.fill(pygame.Color(89, 151, 254))
-    tiles_group.draw(screen)
+    boxes_group.draw(screen)
+    bricks_group.draw(screen)
     player_group.draw(screen)
+    bullet_group.draw(screen)
 
     pygame.display.flip()
 
