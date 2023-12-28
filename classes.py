@@ -5,30 +5,24 @@ from constants import TILE_WIDTH, TILE_HEIGHT, WIDTH, HEIGHT, \
 
 
 class Tile(pygame.sprite.Sprite):
-    """ Тайл """
-
-    def __init__(self, tiles_group, all_sprites, tile_type,
-                 tile_images, pos_x, pos_y):
+    def __init__(self, tiles_group, all_sprites):
         super().__init__(tiles_group, all_sprites)
-        self.image = tile_images[tile_type]
+
+
+class Wall(Tile):
+    def __init__(self, tiles_group, all_sprites, tile_images, pos_x, pos_y):
+        super().__init__(tiles_group, all_sprites)
+        self.image = tile_images['brick']
         self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x,
                                                TILE_HEIGHT * pos_y)
 
-
 class Box(Tile):
-    """ Коробка """
-
-    def __init__(self, tiles_group, all_sprites, tile_type,
-                 tile_images, pos_x, pos_y):
-        super().__init__(tiles_group, all_sprites, tile_type,
-                         tile_images, pos_x, pos_y)
-        self.hp = 5
-
-
-class Brick(Tile):
-    """ Кирпич """
-    pass
-
+    def __init__(self, tiles_group, all_sprites, tile_images, pos_x, pos_y):
+        super().__init__(tiles_group, all_sprites)
+        self.image = tile_images['box']
+        self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x,
+                                               TILE_HEIGHT * pos_y)
+        self.hp = 50
 
 class Camera:
     def __init__(self, field_size):
@@ -42,9 +36,12 @@ class Camera:
         obj.rect.y += self.dy
 
     # позиционировать камеру на объекте target
-    def update(self, target):
-        self.dx = -(target.rect.x + target.rect.w // 2 - WIDTH // 2)
-        self.dy = -(target.rect.y + target.rect.h // 2 - HEIGHT // 2)
+    def update(self, target, sprite_groups):
+        is_collide = any([pygame.sprite.spritecollideany(target, sprite_group)
+                          for sprite_group in sprite_groups])
+        if not is_collide:
+            self.dx = -(target.rect.x + target.rect.w // 2 - WIDTH // 2)
+            self.dy = -(target.rect.y + target.rect.h // 2 - HEIGHT // 2)
 
 
 class Entity(pygame.sprite.Sprite):
@@ -54,7 +51,6 @@ class Entity(pygame.sprite.Sprite):
         self.image = entity_image
         self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x + 15,
                                                TILE_HEIGHT * pos_y + 5)
-
 
 class Player(Entity):
     def __init__(self, player_group, all_sprites, player_image, hp,

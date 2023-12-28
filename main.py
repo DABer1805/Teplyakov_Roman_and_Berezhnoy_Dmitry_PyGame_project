@@ -5,7 +5,7 @@ import pygame
 from constants import WIDTH, HEIGHT, FPS, STEP, DIRECTION_LEFT, \
     DIRECTION_RIGHT
 
-from classes import Player, Tile, Camera, Bullet
+from classes import Player, Wall, Box, Camera, Bullet
 
 # Задаём параметры приложения
 pygame.init()
@@ -69,14 +69,14 @@ def generate_level(level):
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == '#':
-                Tile(bricks_group, all_sprites, 'brick', TILE_IMAGES,
+                Wall(bricks_group, all_sprites, TILE_IMAGES,
                      x, y)
             elif level[y][x] == '@':
                 new_player = Player(player_group, all_sprites, PLAYER_IMAGE,
                                     5, x, y)
             elif level[y][x] == ':':
-                Tile(boxes_group, all_sprites, 'box', TILE_IMAGES,
-                     x, y)
+                Box(boxes_group, all_sprites, TILE_IMAGES,
+                    x, y)
     # вернем игрока, а также размер поля в клетках
     return new_player, x, y
 
@@ -98,6 +98,7 @@ player, level_x, level_y = generate_level(load_level("level_1.txt"))
 camera = Camera((level_x, level_y))
 
 running = True
+collide_side = ''
 
 while running:
 
@@ -106,23 +107,55 @@ while running:
             running = False
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_a:
-                player.rect.x -= STEP
-                player.direction = DIRECTION_LEFT
-                player.image = pygame.transform.flip(PLAYER_IMAGE,
-                                                     True, False)
+                if not (pygame.sprite.spritecollideany(player, bricks_group)
+                        or pygame.sprite.spritecollideany(
+                            player, boxes_group)):
+                    player.rect.x -= STEP
+                    player.direction = DIRECTION_LEFT
+                    player.image = pygame.transform.flip(PLAYER_IMAGE,
+                                                         True, False)
+                    collide_side = ''
+                elif collide_side != 'left' and collide_side:
+                    player.rect.x -= STEP
+                    player.direction = DIRECTION_LEFT
+                    player.image = pygame.transform.flip(PLAYER_IMAGE,
+                                                         True, False)
+                    collide_side = ''
+                else:
+                    collide_side = 'left'
             if event.key == pygame.K_d:
-                player.rect.x += STEP
-                player.direction = DIRECTION_RIGHT
-                player.image = PLAYER_IMAGE
+                if not (pygame.sprite.spritecollideany(player, bricks_group)
+                        or pygame.sprite.spritecollideany(
+                            player, boxes_group)):
+                    player.rect.x += STEP
+                    player.direction = DIRECTION_RIGHT
+                    player.image = PLAYER_IMAGE
+                    collide_side = ''
+                elif collide_side != 'right' and collide_side:
+                    player.rect.x += STEP
+                    player.direction = DIRECTION_RIGHT
+                    player.image = PLAYER_IMAGE
+                    collide_side = ''
+                else:
+                    collide_side = 'right'
             if event.key == pygame.K_SPACE:
-                pass  # TODO: реализовать прыжок персонажа
+                if not (pygame.sprite.spritecollideany(player, bricks_group)
+                        or pygame.sprite.spritecollideany(
+                            player, boxes_group)):
+                    player.rect.y -= STEP
+                    collide_side = ''
+                elif collide_side != 'up' and collide_side:
+                    player.rect.y -= STEP
+                    collide_side = ''
+                else:
+                    collide_side = 'up'
             if event.key == pygame.K_f:
                 new_bul = Bullet(bullet_group, all_sprites, BULLET_IMAGE,
                                  player.direction,
                                  player.rect.x + player.rect.w,
                                  player.rect.y + player.rect.h // 2)
 
-    camera.update(player)
+    camera.update(player, [bricks_group, boxes_group])
 
     for sprite in all_sprites:
         camera.apply(sprite)
