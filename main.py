@@ -33,7 +33,7 @@ player_group = pygame.sprite.Group()
 bullet_group = pygame.sprite.Group()
 
 
-def load_image(name, color_key=None):
+def load_image(name: str, color_key=None) -> pygame.Surface:
     """ Загрузчик изображений """
     fullname = os.path.join('data', 'images', name)
     try:
@@ -51,7 +51,7 @@ def load_image(name, color_key=None):
     return image
 
 
-def load_level(filename):
+def load_level(filename: str) -> list[str]:
     filename = "data/" + filename
     # читаем уровень, убирая символы перевода строки
     with open(filename, 'r') as mapFile:
@@ -94,12 +94,16 @@ PLAYER_IMAGE = load_image('Artur.png')
 # Изображение пули
 BULLET_IMAGE = load_image('bullet.png')
 
+# Игрок, размер уровня в ширину и в высоту
 player, level_x, level_y = generate_level(load_level("level_1.txt"))
+# Камера
 camera = Camera((level_x, level_y))
 
 running = True
+# С какой стороны столкнулись спрайты
 collide_side = ''
 
+# Игровой цикл
 while running:
 
     for event in pygame.event.get():
@@ -107,6 +111,7 @@ while running:
             running = False
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_a:
+                # Движение влево
                 if not (pygame.sprite.spritecollideany(player, bricks_group)
                         or pygame.sprite.spritecollideany(
                             player, boxes_group)):
@@ -124,6 +129,7 @@ while running:
                 else:
                     collide_side = 'left'
             if event.key == pygame.K_d:
+                # Движение вправо
                 if not (pygame.sprite.spritecollideany(player, bricks_group)
                         or pygame.sprite.spritecollideany(
                             player, boxes_group)):
@@ -139,6 +145,7 @@ while running:
                 else:
                     collide_side = 'right'
             if event.key == pygame.K_SPACE:
+                # Прыжок
                 if not (pygame.sprite.spritecollideany(player, bricks_group)
                         or pygame.sprite.spritecollideany(
                             player, boxes_group)):
@@ -150,20 +157,26 @@ while running:
                 else:
                     collide_side = 'up'
             if event.key == pygame.K_f:
+                # Выпустить снаряд
                 new_bul = Bullet(bullet_group, all_sprites, BULLET_IMAGE,
                                  player.direction,
                                  player.rect.x + player.rect.w,
                                  player.rect.y + player.rect.h // 2)
 
+    # Обновляем камеру
     camera.update(player, [bricks_group, boxes_group])
 
+    # Перемещаем все спрайты
     for sprite in all_sprites:
         camera.apply(sprite)
 
+    # Перемещаем пули
     for bullet in bullet_group:
         bullet.update([boxes_group], [bricks_group])
 
+    # Красим фон
     screen.fill(pygame.Color(89, 151, 254))
+    # Рисуем спрайты
     boxes_group.draw(screen)
     bricks_group.draw(screen)
     player_group.draw(screen)
