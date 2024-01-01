@@ -1,9 +1,35 @@
+from random import randrange
+
 import pygame
 
 from constants import TILE_WIDTH, TILE_HEIGHT, WIDTH, HEIGHT, \
     DIRECTION_RIGHT, BULLET_SPEED
 
 from typing import Literal
+
+
+class AnimatedSprite(pygame.sprite.Sprite):
+    def __init__(self, sheet, columns, rows, x, y, target_group, all_sprites):
+        super().__init__(target_group, all_sprites)
+        self.frames = []
+        self.cut_sheet(sheet, columns, rows)
+        self.cur_frame = 0
+        self.counter = 0
+        self.image = self.frames[self.cur_frame]
+        self.rect = self.rect.move(x, y)
+
+    def cut_sheet(self, sheet, columns, rows):
+        self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
+                                sheet.get_height() // rows)
+        for j in range(rows):
+            for i in range(columns):
+                frame_location = (self.rect.w * i, self.rect.h * j)
+                self.frames.append(sheet.subsurface(pygame.Rect(
+                    frame_location, self.rect.size)))
+
+    def update(self):
+        self.cur_frame = (self.cur_frame + 1) % len(self.frames)
+        self.image = self.frames[self.cur_frame]
 
 
 class Tile(pygame.sprite.Sprite):
@@ -24,17 +50,19 @@ class Wall(Tile):
     def __init__(self, tiles_group: pygame.sprite.Group,
                  all_sprites: pygame.sprite.Group,
                  tile_images: dict[str, pygame.Surface],
+                 image_name: str,
                  pos_x: int, pos_y: int) -> None:
         """
         :param tiles_group: Группа, в которую будет добавлен текущий блок
         :param all_sprites: Все спрайты
         :param tile_images: Словарик с изображениями всех блоков
+        :param image_name: Название изображения
         :param pos_x: позиция по оси x
         :param pos_y: позиция по оси y
         """
         super().__init__(tiles_group, all_sprites)
         # Изображение спрайта
-        self.image = tile_images['brick']
+        self.image = tile_images[image_name]
         # Размещаем на экране текущий блок
         self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x,
                                                TILE_HEIGHT * pos_y)
@@ -84,13 +112,13 @@ class Camera:
         obj.rect.y += self.dy
 
     # позиционировать камеру на объекте target
-    def update(self, target, sprite_groups):
+    def update(self, target, collide_side):
         # Столкнулся ли персонаж с каким-либо из спрайтов блоков
-        is_collide = any([pygame.sprite.spritecollideany(target, sprite_group)
-                          for sprite_group in sprite_groups])
-        if not is_collide:
+        if not collide_side:
             self.dx = -(target.rect.x + target.rect.w // 2 - WIDTH // 2)
-            self.dy = -(target.rect.y + target.rect.h // 2 - HEIGHT // 2)
+            self.dy = -(target.rect.y + target.rect.h // 2 - HEIGHT // 1.4)
+        else:
+            self.dx, self.dy = 0, 0
 
 
 class Entity(pygame.sprite.Sprite):
@@ -134,6 +162,10 @@ class Player(Entity):
                          pos_x, pos_y)
         # HP игрока
         self.hp = hp
+        # Сколько патронов в обойме
+        self.ammo = 5
+        # Таймер перезарядки
+        self.recharge_timer = 0
         # Направление, куда игрок смотрит
         self.direction: Literal[0, 1] = DIRECTION_RIGHT
 
@@ -162,7 +194,8 @@ class Bullet(pygame.sprite.Sprite):
         # Направление снаряда
         self.direction = user_direction
 
-    def update(self, destructible_groups, indestructible_groups):
+    def update(self, destructible_groups, indestructible_groups, coin_data,
+               destroy_sound, hit_sound):
         """ Перемещение снаряда """
         # Определяем, в каком направлении передвигать снаряд
         if self.direction == DIRECTION_RIGHT:
@@ -180,7 +213,21 @@ class Bullet(pygame.sprite.Sprite):
             # Если есть хоть один, такой спрайт, то удаляем его вместе со
             # снарядом
             if destructible_sprites_hit_list:
-                destructible_sprites_hit_list[0].kill()
+                destructible_sprites_hit_list[0].hp -= 1
+                if not destructible_sprites_hit_list[0].hp:
+                    destroy_sound.play()
+                    if randrange(100) < coin_data['percent']:
+                        AnimatedSprite(
+                            coin_data['sheet'],
+                            coin_data['columns'],
+                            coin_data['rows'],
+                            destructible_sprites_hit_list[0].rect.x + 5,
+                            destructible_sprites_hit_list[0].rect.y + 5,
+                            coin_data['coins_group'],
+                            coin_data['all_sprites']
+                        )
+                    destructible_sprites_hit_list[0].kill()
+                hit_sound.play()
                 self.kill()
 
         # Пробегаемся по переданным группам НЕ РАЗРУШАЕМЫХ спрайтов,
@@ -188,4 +235,41 @@ class Bullet(pygame.sprite.Sprite):
         for indestructible_group in indestructible_groups:
             # Если снаряд столкнулся с каким-то из спрайтов, то удаляем снаряд
             if pygame.sprite.spritecollideany(self, indestructible_group):
+                hit_sound.play()
                 self.kill()
+
+
+class Button:
+    """Класс для создания кнопок"""
+
+    def __init__(self, width, height, pos_x, pos_y,
+                 active_image, inactive_image, button_name,
+                 action=None):
+        self.width = width
+        self.height = height
+        self.pos_x = pos_x
+        self.pos_y = pos_y
+        self.active_image = active_image
+        self.inactive_image = inactive_image
+        self.button_name = button_name
+        self.action = action
+
+    def draw(self, screen):
+        """Отрисовка кнопок"""
+        mouse = pygame.mouse.get_pos()
+        click = pygame.mouse.get_pressed()
+
+        if (self.pos_x < mouse[0] < self.pos_x + self.width) and \
+                (self.pos_y < mouse[1] < self.pos_y + self.height):
+            screen.blit(self.active_image, (self.pos_x, self.pos_y))
+
+            if click[0] == 1 and self.action is not None:
+                # soundButton.play()
+                pygame.time.delay(300)
+                self.action()
+
+            arrow_idx = 1
+        else:
+            screen.blit(self.inactive_image, (self.pos_x, self.pos_y))
+            arrow_idx = 0
+        return arrow_idx
