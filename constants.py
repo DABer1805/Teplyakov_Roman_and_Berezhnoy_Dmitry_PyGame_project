@@ -18,3 +18,7 @@ BULLET_SPEED = 5
 DIRECTION_LEFT = 0
 # Игрок смотрит вправо
 DIRECTION_RIGHT = 1
+# Толщина рамки у шкал прокачки
+BORDER_WIDTH = 2
+# Длина шкалы характеристики
+IMPROVEMENT_SCALE_WIDTH = 123

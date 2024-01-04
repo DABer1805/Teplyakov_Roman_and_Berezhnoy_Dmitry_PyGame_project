@@ -253,23 +253,26 @@ class Button:
         self.inactive_image = inactive_image
         self.button_name = button_name
         self.action = action
+        self.is_visible = True
 
     def draw(self, screen):
         """Отрисовка кнопок"""
-        mouse = pygame.mouse.get_pos()
-        click = pygame.mouse.get_pressed()
+        if self.is_visible:
+            mouse = pygame.mouse.get_pos()
+            click = pygame.mouse.get_pressed()
 
-        if (self.pos_x < mouse[0] < self.pos_x + self.width) and \
-                (self.pos_y < mouse[1] < self.pos_y + self.height):
-            screen.blit(self.active_image, (self.pos_x, self.pos_y))
+            if (self.pos_x < mouse[0] < self.pos_x + self.width) and \
+                    (self.pos_y < mouse[1] < self.pos_y + self.height):
+                screen.blit(self.active_image, (self.pos_x, self.pos_y))
 
-            if click[0] == 1 and self.action is not None:
-                # soundButton.play()
-                pygame.time.delay(300)
-                self.action()
+                if click[0] == 1 and self.action is not None:
+                    # soundButton.play()
+                    pygame.time.delay(300)
+                    self.action()
 
-            arrow_idx = 1
-        else:
-            screen.blit(self.inactive_image, (self.pos_x, self.pos_y))
-            arrow_idx = 0
-        return arrow_idx
+                arrow_idx = 1
+            else:
+                screen.blit(self.inactive_image, (self.pos_x, self.pos_y))
+                arrow_idx = 0
+            return arrow_idx
+        return 0
