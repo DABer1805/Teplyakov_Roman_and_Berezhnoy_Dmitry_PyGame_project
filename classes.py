@@ -3,7 +3,7 @@ from random import randrange
 import pygame
 
 from constants import TILE_WIDTH, TILE_HEIGHT, WIDTH, HEIGHT, \
-    DIRECTION_RIGHT, BULLET_SPEED
+    DIRECTION_RIGHT, BULLET_SPEED, DIRECTION_LEFT
 
 from typing import Literal
 
@@ -140,7 +140,7 @@ class Entity(pygame.sprite.Sprite):
         self.image = entity_image
         # Размещаем сущность на экране
         self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x + 15,
-                                               TILE_HEIGHT * pos_y + 5)
+                                               TILE_HEIGHT * pos_y + 1)
 
 
 class Player(Entity):
@@ -170,6 +170,73 @@ class Player(Entity):
         self.direction: Literal[0, 1] = DIRECTION_RIGHT
 
 
+class Enemy(Entity):
+    """Враг"""
+
+    def __init__(self, enemies_group: pygame.sprite.Group,
+                 all_sprites: pygame.sprite.Group,
+                 enemy_image: pygame.Surface,
+                 pos_x: int, pos_y: int, direction=DIRECTION_LEFT) -> None:
+        """
+        :param enemies_group: Группа, куда будет добавлен враг
+        :param all_sprites: Все спрайты
+        :param enemy_image: Изображение врага
+        :param pos_x: позиция по оси x
+        :param pos_y: позиция по оси y
+        :key direction: направление врага
+        """
+        super().__init__(enemies_group, all_sprites, enemy_image,
+                         pos_x, pos_y)
+
+        # Изменение изображения врага в зависимости стороны, в которую он
+        # смотрит
+        if direction == DIRECTION_RIGHT:
+            self.image = pygame.transform.flip(enemy_image, True, False)
+
+        # HP врага
+        self.hp = 3
+        # Фигура врага (чтоб стоял ровно на земле)
+        self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x + 15,
+                                               TILE_HEIGHT * pos_y + 1)
+        # Пройденный промежуток px
+        self.distance = 0
+        # Скорость
+        self.speed = 1
+        # Направление врага
+        self.direction = direction
+        # Флаг для определения логики врага
+        self.attack_player = False
+        # Флаг, для создания пули
+        self.is_shoot = True
+        # Значение таймера
+        self.timer = 0
+        # Таймер для задержки атаки
+        self.attack_timer = 0
+        # Луч врага
+        self.ray = None
+
+    def update(self, direction) -> None:
+        """Перемещение врага"""
+        # Определяем направление движения врага
+        if self.direction:
+            self.rect.x += self.speed
+        else:
+            self.rect.x -= self.speed
+        # Добавляем в пройденную дистанцию
+        self.distance += self.speed
+        # Меняем направление движения и изображение врага, если враг прошел
+        # 150px
+        if self.distance >= 150:
+            if self.direction:
+                self.direction = DIRECTION_LEFT
+            else:
+                self.direction = DIRECTION_RIGHT
+            # Отражаем изображение врага
+            self.image = pygame.transform.flip(self.image, True, False)
+            # Обнуляем дистанцию
+            self.distance = 0
+
+
 class Bullet(pygame.sprite.Sprite):
     """ Снаряд """
 
@@ -177,7 +244,7 @@ class Bullet(pygame.sprite.Sprite):
                  all_sprites: pygame.sprite.Group,
                  bullet_image: pygame.Surface,
                  user_direction: Literal[0, 1],
-                 pos_x, pos_y) -> None:
+                 pos_x, pos_y, is_enemy_bullet=False) -> None:
         """
         :param bullet_group: Группа, куда будет добавлен снаряд
         :param all_sprites: Все спрайты
@@ -185,6 +252,7 @@ class Bullet(pygame.sprite.Sprite):
         :param user_direction: Направление игрока (оно же будет и для снаряда)
         :param pos_x: позиция по оси x
         :param pos_y: позиция по оси y
+        :key is_enemy_bullet: флаг для определения пули врага и игрока
         """
         super().__init__(bullet_group, all_sprites)
         # Изображение снаряда
@@ -193,9 +261,11 @@ class Bullet(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(pos_x, pos_y)
         # Направление снаряда
         self.direction = user_direction
+        # Флаг для различия пули игрока и пули врага
+        self.is_enemy_bullet = is_enemy_bullet
 
     def update(self, destructible_groups, indestructible_groups, coin_data,
-               destroy_sound, hit_sound):
+               destroy_sound, hit_sound, player_group):
         """ Перемещение снаряда """
         # Определяем, в каком направлении передвигать снаряд
         if self.direction == DIRECTION_RIGHT:
@@ -212,7 +282,7 @@ class Bullet(pygame.sprite.Sprite):
             )
             # Если есть хоть один, такой спрайт, то удаляем его вместе со
             # снарядом
-            if destructible_sprites_hit_list:
+            if destructible_sprites_hit_list and not self.is_enemy_bullet:
                 destructible_sprites_hit_list[0].hp -= 1
                 if not destructible_sprites_hit_list[0].hp:
                     destroy_sound.play()
@@ -233,8 +303,10 @@ class Bullet(pygame.sprite.Sprite):
         # Пробегаемся по переданным группам НЕ РАЗРУШАЕМЫХ спрайтов,
         # в которых будет проверяться столкновение
         for indestructible_group in indestructible_groups:
-            # Если снаряд столкнулся с каким-то из спрайтов, то удаляем снаряд
-            if pygame.sprite.spritecollideany(self, indestructible_group):
+            # Если снаряд столкнулся с каким-то из спрайтов и этот спрайт не
+            # игрок, то удаляем снаряд
+            if pygame.sprite.spritecollideany(self, indestructible_group) and \
+                    not pygame.sprite.spritecollideany(self, player_group):
                 hit_sound.play()
                 self.kill()
 
@@ -276,3 +348,33 @@ class Button:
                 arrow_idx = 0
             return arrow_idx
         return 0
+
+
+class Ray(pygame.sprite.Sprite):
+    """Луч для проверки наличия спрайта игрока в поле зрения врага"""
+
+    def __init__(self, rays_group: pygame.sprite.Group,
+                 direction: Literal[0, 1],
+                 pos_x: int, pos_y: int) -> None:
+        """
+        :param rays_group: группа спрайтов лучей
+        :param direction: направление луча
+        :param pos_x: позиция по оси x
+        :param pos_y: позиция по оси y
+        """
+        super().__init__(rays_group)
+        # Фигура луча
+        if direction:
+            self.rect = pygame.Rect(pos_x, pos_y, 300, 1)
+        else:
+            self.rect = pygame.Rect(pos_x - 300, pos_y, 300, 1)
+        # Направление луча
+        self.direction = direction
+
+    def check_collide_with_player(self,
+                                  player_group: pygame.sprite.Group) -> bool:
+        """Проверка столкновения с игроком"""
+        if pygame.sprite.spritecollideany(self, player_group):
+            del self
+            return True
+        return False

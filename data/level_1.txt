@@ -4,8 +4,8 @@ LLLLLL.............................................LLLLLL
 LLLLLL^^.........................................^^LLLLLL
 LLLLLLLL.........................................LLLLLLLL
 LLLLLLLL.........................................LLLLLLLL
-LLLLLLLL^.................lllll.................^LLLLLLLL
-LLLLLLLLL..@........::.............:::..........LLLLLLLLL
-LLLLLLLLL........::^^^...........::::::.........LLLLLLLLL
-mmmmmmmmmllllllllllmmmlllll...llllllllllllllllllmmmmmmmmm
-ddddddddddddddddddddddddddd...ddddddddddddddddddddddddddd
+LLLLLLLL^.......................................^LLLLLLLL
+LLLLLLLLL...........::.............:::..........LLLLLLLLL
+LLLLLLLLL....@...::^^^.......<....:::::l....>...LLLLLLLLL
+mmmmmmmmmllllllllllmmmllllllllllllllllllllllllllmmmmmmmmm
+ddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
