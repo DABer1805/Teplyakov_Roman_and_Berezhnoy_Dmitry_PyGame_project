@@ -469,13 +469,13 @@ improvement_scales = {
                             settings[7]),
                 0, 0
             ] for settings in (
-            (337, 220, 0, 12, 337 + BORDER_WIDTH, 220 + BORDER_WIDTH, 0,
-             12 - BORDER_WIDTH * 2, 0),
-            (337, 269, 0, 12, 337 + BORDER_WIDTH, 269 + BORDER_WIDTH, 0,
-             12 - BORDER_WIDTH * 2, 0),
-            (337, 316, 0, 12, 337 + BORDER_WIDTH, 269 + BORDER_WIDTH, 0,
-             12 - BORDER_WIDTH * 2, 0)
-        )
+                (337, 220, 0, 12, 337 + BORDER_WIDTH, 220 + BORDER_WIDTH, 0,
+                 12 - BORDER_WIDTH * 2, 0),
+                (337, 269, 0, 12, 337 + BORDER_WIDTH, 269 + BORDER_WIDTH, 0,
+                 12 - BORDER_WIDTH * 2, 0),
+                (337, 316, 0, 12, 337 + BORDER_WIDTH, 269 + BORDER_WIDTH, 0,
+                 12 - BORDER_WIDTH * 2, 0)
+            )
         ], [False, False, False], [
             [10, 45, 100, 250, 500, 'max'],
             [10, 45, 100, 250, 500, 'max'],
@@ -496,11 +496,11 @@ improvement_scales = {
                             settings[7]),
                 0, 0
             ] for settings in (
-            (337, 220, 0, 12, 337 + BORDER_WIDTH, 220 + BORDER_WIDTH, 0,
-             12 - BORDER_WIDTH * 2, 0),
-            (337, 269, 0, 12, 337 + BORDER_WIDTH, 269 + 69 + BORDER_WIDTH, 0,
-             12 - BORDER_WIDTH * 2, 0)
-        )
+                (337, 220, 0, 12, 337 + BORDER_WIDTH, 220 + BORDER_WIDTH, 0,
+                 12 - BORDER_WIDTH * 2, 0),
+                (337, 269, 0, 12, 337 + BORDER_WIDTH, 269 + 69 + BORDER_WIDTH,
+                 0, 12 - BORDER_WIDTH * 2, 0)
+            )
         ], [False, False, True], [
             [10, 45, 100, 250, 500, 'max'],
             [10, 45, 100, 250, 500, 'max']
@@ -679,8 +679,8 @@ def upgrade(idx):
                 improvement_scales[
                     current_characteristics_target
                 ][0][idx][2] - BORDER_WIDTH * 2
-            if improvement_scales[current_characteristics_target][0][idx][
-                2] == 1:
+            if improvement_scales[current_characteristics_target][0][idx][2] \
+                    == 1:
                 improvement_scales[current_characteristics_target][1][
                     idx] = True
                 buttons[-(3 - idx)].is_visible = False
@@ -1017,7 +1017,6 @@ while running:
                     )
             elif current_menu == 2:
                 screen.blit(PAUSE_BACKGROUND, (0, 0))
-
 
     else:
         if current_menu == 0:
