@@ -190,7 +190,7 @@ class Enemy(Entity):
 
         # Изменение изображения врага в зависимости стороны, в которую он
         # смотрит
-        if direction == DIRECTION_RIGHT:
+        if direction == DIRECTION_LEFT:
             self.image = pygame.transform.flip(enemy_image, True, False)
 
         # HP врага

@@ -336,15 +336,15 @@ MAIN_MENU_IMAGE = load_image('main_menu_image.png')
 # Задний фон для экрана с выбором уровня
 SELECT_LEVEL_MENU_IMAGE = load_image('select_level_menu_image.png')
 # Изображение игрока
-PLAYER_IMAGE = load_image('Artur.png')
+PLAYER_IMAGE = load_image('artur.png')
 # Изображение пули
 BULLET_IMAGE = load_image('bullet.png')
 # Изображение врага
-ENEMY_IMAGE = load_image('Enemy.png')
+ENEMY_IMAGE = load_image('ordinary_enemy_image.png')
 # Изображение heavy врага
-HEAVY_ENEMY_IMAGE = load_image('Heavy_enemy.png')
+HEAVY_ENEMY_IMAGE = load_image('heavy_enemy.png')
 # Изображение пули врага
-ENEMY_BULLET_IMAGE = load_image('Enemy_bullet.png')
+ENEMY_BULLET_IMAGE = load_image('enemy_bullet.png')
 # Звук подборам монет
 COIN_SELECTION_SOUND = pygame.mixer.Sound("data/sounds/coin_selection.wav")
 # Звук выстрела
@@ -649,6 +649,7 @@ def upgrade(idx):
                     idx] = True
                 buttons[-(3 - idx)].is_visible = False
 
+
 def continue_game():
     global pause
     PAUSE_STOP_SOUND.play()
@@ -876,56 +877,59 @@ while running:
             for sprite in all_sprites:
                 camera.apply(sprite)
 
-        # Перемещаем пули
-        for bullet in bullet_group:
-            bullet.update([boxes_group, enemies_group], [bricks_group],
-                          COINS_DATA, BOX_DESTROY_SOUND, HIT_SOUND,
-                          player_group)
+            # Перемещаем пули
+            for bullet in bullet_group:
+                bullet.update([boxes_group, enemies_group],
+                              [bricks_group],
+                              COINS_DATA, BOX_DESTROY_SOUND, HIT_SOUND,
+                              player_group)
 
-        # Проверяем наличие игрока в поле зрения врага и перемещаем врагов
-        for enemy in enemies_group:
-            # Луч для проверки попадания игрока в поле зрения врага
-            if enemy.direction:
-                enemy.ray = Ray(rays_group, enemy.direction,
-                                enemy.rect.x + enemy.rect.w,
-                                enemy.rect.y + enemy.rect.h // 2)
-            else:
-                enemy.ray = Ray(rays_group, enemy.direction, enemy.rect.x,
-                                enemy.rect.y + enemy.rect.h // 2)
+            # Проверяем наличие игрока в поле зрения врага и перемещаем врагов
+            for enemy in enemies_group:
+                # Луч для проверки попадания игрока в поле зрения врага
+                if enemy.direction:
+                    enemy.ray = Ray(rays_group, enemy.direction,
+                                    enemy.rect.x + enemy.rect.w,
+                                    enemy.rect.y + enemy.rect.h // 2)
+                else:
+                    enemy.ray = Ray(rays_group, enemy.direction,
+                                    enemy.rect.x,
+                                    enemy.rect.y + enemy.rect.h // 2)
 
-            # Проверка пересечения с игроком лучами и переход в режим атаки
-            # для врага, если игрок в поле зрения
-            if enemy.ray.check_collide_with_player(player_group):
-                enemy.attack_player = True
-                enemy.speed = 0
-                enemy.attack_timer = 120
-            else:
-                if enemy.attack_timer:
-                    enemy.attack_timer -= 1
-                    if enemy.attack_timer == 0:
+                # Проверка пересечения с игроком лучами и переход в режим атаки
+                # для врага, если игрок в поле зрения
+                if enemy.ray.check_collide_with_player(player_group):
+                    enemy.attack_player = True
+                    enemy.speed = 0
+                    enemy.attack_timer = 120
+                else:
+                    if enemy.attack_timer:
+                        enemy.attack_timer -= 1
+                        if enemy.attack_timer == 0:
+                            enemy.attack_player = False
+                            enemy.speed = 1
+                    elif enemy.attack_timer == 0:
                         enemy.attack_player = False
                         enemy.speed = 1
-                elif enemy.attack_timer == 0:
-                    enemy.attack_player = False
-                    enemy.speed = 1
 
-            # Создание пуль в случае, если враг в режиме атаки
-            if enemy.attack_player:
-                if enemy.is_shoot:
-                    SHOT_SOUND.play()
-                    new_bullet = Bullet(bullet_group, all_sprites,
-                                        ENEMY_BULLET_IMAGE, enemy.direction,
-                                        enemy.rect.x,
-                                        enemy.rect.y + enemy.rect.h // 2,
-                                        is_enemy_bullet=True)
-                    enemy.timer = 90
-                    enemy.is_shoot = False
-                else:
-                    enemy.timer -= 1
-                    if enemy.timer == 0:
-                        enemy.is_shoot = True
+                # Создание пуль в случае, если враг в режиме атаки
+                if enemy.attack_player:
+                    if enemy.is_shoot:
+                        SHOT_SOUND.play()
+                        new_bullet = Bullet(bullet_group, all_sprites,
+                                            ENEMY_BULLET_IMAGE,
+                                            enemy.direction,
+                                            enemy.rect.x,
+                                            enemy.rect.y + enemy.rect.h // 2,
+                                            is_enemy_bullet=True)
+                        enemy.timer = 90
+                        enemy.is_shoot = False
+                    else:
+                        enemy.timer -= 1
+                        if enemy.timer == 0:
+                            enemy.is_shoot = True
 
-            enemy.update(player.direction)
+                enemy.update(player.direction)
 
             for coin in coins_group:
                 if coin.counter == 3:
@@ -942,15 +946,15 @@ while running:
                 COIN_SELECTION_SOUND.play()
                 coins_collide_list[0].kill()
 
-        # Красим фон
-        screen.blit(BACKGROUND_IMAGE, (0, 0))
-        # Рисуем спрайты
-        boxes_group.draw(screen)
-        bricks_group.draw(screen)
-        player_group.draw(screen)
-        bullet_group.draw(screen)
-        coins_group.draw(screen)
-        enemies_group.draw(screen)
+            # Красим фон
+            screen.blit(BACKGROUND_IMAGE, (0, 0))
+            # Рисуем спрайты
+            boxes_group.draw(screen)
+            bricks_group.draw(screen)
+            player_group.draw(screen)
+            bullet_group.draw(screen)
+            coins_group.draw(screen)
+            enemies_group.draw(screen)
 
             show_dashboard(player.ammo, coins)
         else:

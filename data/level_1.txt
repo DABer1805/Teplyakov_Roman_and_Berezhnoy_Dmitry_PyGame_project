@@ -6,6 +6,6 @@ LLLLLLLL.........................................LLLLLLLL
 LLLLLLLL.........................................LLLLLLLL
 LLLLLLLL^.......................................^LLLLLLLL
 LLLLLLLLL...........::.............:::..........LLLLLLLLL
-LLLLLLLLL....@...::^^^.......<....:::::l....>...LLLLLLLLL
-mmmmmmmmmllllllllllmmmllllllllllllllllllllllllllmmmmmmmmm
+LLLLLLLLL....@...::^^^.......<....:::::^....>...LLLLLLLLL
+mmmmmmmmmllllllllllmmmlllllllllllllllllmllllllllmmmmmmmmm
 ddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
