@@ -12,7 +12,8 @@ from PIL import Image, ImageFilter
 from constants import WIDTH, HEIGHT, FPS, STEP, DIRECTION_LEFT, \
     DIRECTION_RIGHT, BORDER_WIDTH, IMPROVEMENT_SCALE_WIDTH
 
-from classes import Player, Enemy, Wall, Box, Camera, Bullet, Button, Ray
+from classes import Player, Enemy, Wall, Box, Camera, Bullet, Button, Ray, \
+    PhantomTile
 
 # Задаём параметры приложения
 pygame.init()
@@ -51,6 +52,8 @@ rays_group = pygame.sprite.Group()
 tile_group = pygame.sprite.Group()
 tile_group.add(bricks_group)
 tile_group.add(boxes_group)
+# Группа фантомных блоков (задний фон и украшения)
+phantom_group = pygame.sprite.Group()
 
 
 def load_image(filename: str) -> pygame.Surface:
@@ -113,9 +116,13 @@ def generate_level(level: list[str]) -> tuple[Player, int, int]:
         for x in range(len(level[y])):
             # Тут те тайлы, котрые не рушатся, создаётся соответствующий
             # спрайт и добавляется в группу
-            if level[y][x] in ('l', 'd', 'm', 'L', '^'):
+            if level[y][x] in ('w', 's', 'l', 'd', 'm', 'L', '^', 'D'):
                 Wall(bricks_group, all_sprites, TILE_IMAGES,
                      TILE_NAMES[level[y][x]], x, y)
+            elif level[y][x] in ('#', '_', '-', '*', '/', '0', '1', '2',
+                                 '3'):
+                PhantomTile(phantom_group, all_sprites, TILE_IMAGES,
+                            TILE_NAMES[level[y][x]], x, y)
             # Тут считывается местоположение игрока и создаётся его спрайт
             # (НЕ НАДО СОЗДАВАТЬ В
             # ФАЙЛЕ НЕСКОЛЬКИХ ИГРОКОВ!!!)
@@ -130,9 +137,9 @@ def generate_level(level: list[str]) -> tuple[Player, int, int]:
                           direction=DIRECTION_RIGHT)
                 else:
                     Enemy(enemies_group, all_sprites, ENEMY_IMAGE, x, y)
-            elif level[y][x] == ':':
+            elif level[y][x] in ('b', 'B'):
                 Box(boxes_group, all_sprites, TILE_IMAGES,
-                    x, y)
+                    TILE_NAMES[level[y][x]], x, y)
     # Вернем игрока, а также размер поля в клетках
     return new_player, x, y
 
@@ -318,7 +325,22 @@ TILE_IMAGES = {
     'dirt': load_image('dirt.png'),
     'mixed_dirt': load_image('mixed_dirt.png'),
     'light_dirt': load_image('light_dirt.png'),
-    'box': load_image('box.png')
+    'box': load_image('box.png'),
+    'shelter_box': load_image('shelter_box.png'),
+    'shelter_floor': load_image('shelter_floor.png'),
+    'shelter_wall': load_image('shelter_wall.png'),
+    'down_shelter_floor': load_image('down_shelter_floor.png'),
+    'shelter_light': load_image('shelter_light.png'),
+    'shelter_small_door': load_image('shelter_small_door.png'),
+    'shelter_background_wall_1': load_image('shelter_background_wall_1.png'),
+    'shelter_background_wall_2': load_image('shelter_background_wall_2.png'),
+    'shelter_door': load_image('shelter_door.png'),
+    'storage_background_1': load_image('storage_background_image_1.png'),
+    'storage_background_2': load_image('storage_background_image_2.png'),
+    'water_treatment_room_background_1': load_image(
+        'water_treatment_room_background_image_1.png'
+    ),
+    'infirmary_background': load_image('infirmary_background_image.png')
 }
 
 # Названия тайлов
@@ -326,8 +348,22 @@ TILE_NAMES = {
     'l': 'land',
     '^': 'light_land',
     'd': 'dirt',
+    'b': 'box',
+    'B': 'shelter_box',
     'L': 'light_dirt',
-    'm': 'mixed_dirt'
+    'm': 'mixed_dirt',
+    's': 'shelter_floor',
+    'w': 'shelter_wall',
+    '*': 'shelter_light',
+    '#': 'shelter_small_door',
+    '_': 'shelter_background_wall_1',
+    '-': 'shelter_background_wall_2',
+    '/': 'shelter_door',
+    'D': 'down_shelter_floor',
+    '0': 'storage_background_1',
+    '1': 'storage_background_2',
+    '2': 'water_treatment_room_background_1',
+    '3': 'infirmary_background'
 }
 
 # ===== Изображения =====
@@ -949,6 +985,7 @@ while running:
             # Красим фон
             screen.blit(BACKGROUND_IMAGE, (0, 0))
             # Рисуем спрайты
+            phantom_group.draw(screen)
             boxes_group.draw(screen)
             bricks_group.draw(screen)
             player_group.draw(screen)

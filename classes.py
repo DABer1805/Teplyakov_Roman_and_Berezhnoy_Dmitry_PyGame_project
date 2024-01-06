@@ -44,6 +44,31 @@ class Tile(pygame.sprite.Sprite):
         super().__init__(tiles_group, all_sprites)
 
 
+
+class PhantomTile(Tile):
+    """ Блок фантомного спрайта """
+
+    def __init__(self, tiles_group: pygame.sprite.Group,
+                 all_sprites: pygame.sprite.Group,
+                 tile_images: dict[str, pygame.Surface],
+                 image_name: str,
+                 pos_x: int, pos_y: int) -> None:
+        """
+        :param tiles_group: Группа, в которую будет добавлен текущий блок
+        :param all_sprites: Все спрайты
+        :param tile_images: Словарик с изображениями всех блоков
+        :param image_name: Название изображения
+        :param pos_x: позиция по оси x
+        :param pos_y: позиция по оси y
+        """
+        super().__init__(tiles_group, all_sprites)
+        # Изображение спрайта
+        self.image = tile_images[image_name]
+        # Размещаем на экране текущий блок
+        self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x,
+                                               TILE_HEIGHT * pos_y)
+
+
 class Wall(Tile):
     """ Блок кирпичной стены """
 
@@ -74,6 +99,7 @@ class Box(Tile):
     def __init__(self, tiles_group: pygame.sprite.Group,
                  all_sprites: pygame.sprite.Group,
                  tile_images: dict[str, pygame.Surface],
+                 image_name: str,
                  pos_x: int, pos_y: int) -> None:
         """
         :param tiles_group: Группа, в которую будет добавлен текущий блок
@@ -84,7 +110,7 @@ class Box(Tile):
         """
         super().__init__(tiles_group, all_sprites)
         # Изображение спрайта
-        self.image = tile_images['box']
+        self.image = tile_images[image_name]
         # Размещаем на экране текущий блок
         self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x,
                                                TILE_HEIGHT * pos_y)
