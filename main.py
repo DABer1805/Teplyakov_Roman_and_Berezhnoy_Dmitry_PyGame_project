@@ -54,6 +54,8 @@ tile_group.add(bricks_group)
 tile_group.add(boxes_group)
 # Группа фантомных блоков (задний фон и украшения)
 phantom_group = pygame.sprite.Group()
+# Группа пуль врагов
+enemies_bullet_group = pygame.sprite.Group()
 
 
 def load_image(filename: str) -> pygame.Surface:
@@ -128,7 +130,7 @@ def generate_level(level: list[str]) -> tuple[Player, int, int]:
             # ФАЙЛЕ НЕСКОЛЬКИХ ИГРОКОВ!!!)
             elif level[y][x] == '@':
                 new_player = Player(player_group, all_sprites, PLAYER_IMAGE,
-                                    5, x, y)
+                                    x, y)
             # Тут те тайлы, котрые имеют hp и их можно разрушить, создаётся
             # соответствующий спрайт и добавляется в группу
             elif level[y][x] == '<' or level[y][x] == '>':
@@ -664,7 +666,7 @@ def upgrade(idx):
         ]
         if improvement_scales[current_characteristics_target][0][idx][2] != 1:
             UPGRADE_SOUND.play()
-            improvement_scales[current_characteristics_target][3][idx]()
+            improvement_scales[current_characteristics_target][3][idx]
             improvement_scales[current_characteristics_target][0][idx][2] += \
                 0.2
             improvement_scales[current_characteristics_target][0][idx][3] += 1
@@ -913,12 +915,27 @@ while running:
             for sprite in all_sprites:
                 camera.apply(sprite)
 
-            # Перемещаем пули
+            # Перемещаем пули игрока
             for bullet in bullet_group:
                 bullet.update([boxes_group, enemies_group],
                               [bricks_group],
                               COINS_DATA, BOX_DESTROY_SOUND, HIT_SOUND,
                               player_group)
+
+            # Перемещаем пули врагов
+            for bullet in enemies_bullet_group:
+                bullet.update([boxes_group, enemies_group],
+                              [bricks_group],
+                              COINS_DATA, BOX_DESTROY_SOUND, HIT_SOUND,
+                              player_group)
+
+            # Обновляем таймер щита игрока
+            if player.shield_recharge:
+                player.shield_recharge -= 1
+                if player.shield_recharge == 0:
+                    player.shield += 1
+                    if player.shield != 3:
+                        player.shield_recharge = 300
 
             # Проверяем наличие игрока в поле зрения врага и перемещаем врагов
             for enemy in enemies_group:
@@ -952,7 +969,7 @@ while running:
                 if enemy.attack_player:
                     if enemy.is_shoot:
                         SHOT_SOUND.play()
-                        new_bullet = Bullet(bullet_group, all_sprites,
+                        new_bullet = Bullet(enemies_bullet_group, all_sprites,
                                             ENEMY_BULLET_IMAGE,
                                             enemy.direction,
                                             enemy.rect.x,
@@ -990,6 +1007,7 @@ while running:
             bricks_group.draw(screen)
             player_group.draw(screen)
             bullet_group.draw(screen)
+            enemies_bullet_group.draw(screen)
             coins_group.draw(screen)
             enemies_group.draw(screen)
 
@@ -1034,6 +1052,11 @@ while running:
             0 < y < HEIGHT:
         draw_arrow(screen, ARROW_IMAGES[arrow_idx], x, y)
         arrow_idx = 0
+
+    # Проверяем хп игрока
+    for player in player_group:
+        if player.hp == 0:
+            running = False
 
     pygame.display.flip()
     clock.tick(FPS)

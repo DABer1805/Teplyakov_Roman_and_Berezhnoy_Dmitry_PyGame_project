@@ -174,20 +174,23 @@ class Player(Entity):
 
     def __init__(self, player_group: pygame.sprite.Group,
                  all_sprites: pygame.sprite.Group,
-                 player_image: pygame.Surface, hp: int,
+                 player_image: pygame.Surface,
                  pos_x: int, pos_y: int) -> None:
         """
         :param player_group: Групп, куда будет добавлен игрок
         :param all_sprites: Все спрайты
         :param player_image: Изображение игрока
-        :param hp: HP игрока
         :param pos_x: позиция по оси x
         :param pos_y: позиция по оси y
         """
         super().__init__(player_group, all_sprites, player_image,
                          pos_x, pos_y)
         # HP игрока
-        self.hp = hp
+        self.hp = 5
+        # Щит игрока
+        self.shield = 3
+        # Таймер перезарядки щита
+        self.shield_recharge = 0
         # Сколько патронов в обойме
         self.ammo = 5
         # Таймер перезарядки
@@ -336,6 +339,18 @@ class Bullet(pygame.sprite.Sprite):
                 hit_sound.play()
                 self.kill()
 
+        # Если пуля вражеская, то проверяем пересечение со спрайтом игрока и
+        # отнимаем либо щит, либо хп
+        if self.is_enemy_bullet:
+            if pygame.sprite.spritecollideany(self, player_group):
+                for player in player_group:
+                    if player.shield:
+                        player.shield -= 1
+                        player.shield_recharge = 300
+                    else:
+                        player.hp -= 1
+                self.kill()
+
 
 class Button:
     """Класс для создания кнопок"""
@@ -391,9 +406,9 @@ class Ray(pygame.sprite.Sprite):
         super().__init__(rays_group)
         # Фигура луча
         if direction:
-            self.rect = pygame.Rect(pos_x, pos_y, 300, 1)
+            self.rect = pygame.Rect(pos_x, pos_y, 200, 1)
         else:
-            self.rect = pygame.Rect(pos_x - 300, pos_y, 300, 1)
+            self.rect = pygame.Rect(pos_x - 200, pos_y, 200, 1)
         # Направление луча
         self.direction = direction
 
