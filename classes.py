@@ -1,6 +1,7 @@
 from random import randrange
 
 import pygame
+import sqlite3
 
 from constants import TILE_WIDTH, TILE_HEIGHT, WIDTH, HEIGHT, \
     DIRECTION_RIGHT, BULLET_SPEED, DIRECTION_LEFT
@@ -185,14 +186,23 @@ class Player(Entity):
         """
         super().__init__(player_group, all_sprites, player_image,
                          pos_x, pos_y)
+
+        # Подключаемся к базе данных
+        self.con = sqlite3.connect('DataBase.sqlite')
+        self.cur = self.con.cursor()
+
         # HP игрока
-        self.hp = 5
+        self.hp = self.cur.execute('SELECT HP FROM Player_data').fetchone()[0]
         # Щит игрока
-        self.shield = 3
+        self.shield = self.cur.execute(
+            'SELECT Shields FROM Player_data'
+        ).fetchone()[0]
         # Таймер перезарядки щита
         self.shield_recharge = 0
         # Сколько патронов в обойме
-        self.ammo = 5
+        self.ammo = self.cur.execute(
+            'SELECT Ammo FROM Player_data'
+        ).fetchone()[0]
         # Таймер перезарядки
         self.recharge_timer = 0
         # Направление, куда игрок смотрит
@@ -294,7 +304,7 @@ class Bullet(pygame.sprite.Sprite):
         self.is_enemy_bullet = is_enemy_bullet
 
     def update(self, destructible_groups, indestructible_groups, coin_data,
-               destroy_sound, hit_sound, player_group):
+               destroy_sound, hit_sound, player_group, player_damage):
         """ Перемещение снаряда """
         # Определяем, в каком направлении передвигать снаряд
         if self.direction == DIRECTION_RIGHT:
@@ -312,8 +322,8 @@ class Bullet(pygame.sprite.Sprite):
             # Если есть хоть один, такой спрайт, то удаляем его вместе со
             # снарядом
             if destructible_sprites_hit_list and not self.is_enemy_bullet:
-                destructible_sprites_hit_list[0].hp -= 1
-                if not destructible_sprites_hit_list[0].hp:
+                destructible_sprites_hit_list[0].hp -= player_damage
+                if destructible_sprites_hit_list[0].hp <= 0:
                     destroy_sound.play()
                     if randrange(100) < coin_data['percent']:
                         AnimatedSprite(
