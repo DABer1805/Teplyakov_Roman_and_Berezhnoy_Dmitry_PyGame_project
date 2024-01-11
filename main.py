@@ -112,7 +112,7 @@ def generate_level(level_map):
     """ Генерация уровня """
     global level_x, level_y
     chunks = []
-    player = Player((player_group,), PLAYER_IMAGE, 5, 9, 12)
+    player = Player((player_group,), PLAYER_IMAGE, 9, 12)
     level_x, level_y = 7, 3
     for y1 in range(level_y):
         for x1 in range(level_x):
@@ -984,6 +984,18 @@ while running:
                     player_group, camera,
                     virtual_surface
                 )
+            # Обновляем таймер щита игрока
+            if player.shield_recharge:
+                player.shield_recharge -= 1
+                if player.shield_recharge == 0:
+                    player.shield += 1
+                    if player.shield != 3:
+                        player.shield_recharge = 300
+            # Проверяем хп игрока
+            for player in player_group:
+                if player.hp == 0:
+                    print("ПОМЕР")
+
             player_group.draw(virtual_surface)
 
             player.check_collision_sides(target_group)

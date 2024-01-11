@@ -128,12 +128,12 @@ class Chunk:
         self.boxes_group = pygame.sprite.Group()
         # Спрайты кирпичных блоков
         self.bricks_group = pygame.sprite.Group()
+        # Группа фантомных блоков (задний фон и украшения)
+        self.phantom_group = pygame.sprite.Group()
         # Спрайты монеток
         self.coins_group = pygame.sprite.Group()
         # Спрайты врагов
         self.enemies_group = pygame.sprite.Group()
-        # Группа фантомных блоков (задний фон и украшения)
-        self.phantom_group = pygame.sprite.Group()
         for y, row in enumerate(chunk_map):
             for x, elem in enumerate(row[0]):
                 # Тут те тайлы, котрые не рушатся, создаётся соответствующий
@@ -235,7 +235,7 @@ class Chunk:
                         Bullet(bullet_group, bullet_image,
                                enemy.direction, x,
                                enemy.y + enemy.rect.h // 2,
-                               is_enemy_bullet=True)
+                               is_enemy_bullet=True, damage=enemy.damage)
                         enemy.timer = enemy.shot_delay
                         enemy.ammo -= 1
                     else:
@@ -251,8 +251,10 @@ class Chunk:
             sprite.rect.x = sprite.x - camera.x + camera.dx
             sprite.rect.y = sprite.y - camera.y + camera.dy
 
-            screen.blit(sprite.image, (sprite.rect.x,
-                                       sprite.rect.y))
+        self.all_sprites.draw(screen)
+        self.bricks_group .draw(screen)
+        self.phantom_group.draw(screen)
+        self.coins_group.draw(screen)
 
         target_group = pygame.sprite.Group()
         target_group.add(self.boxes_group)
@@ -270,6 +272,9 @@ class Chunk:
                     dx = 0
                 enemy.x += dx
                 enemy.y += 5
+
+        self.boxes_group.draw(screen)
+        self.enemies_group.draw(screen)
 
 
 class Camera:
@@ -367,7 +372,7 @@ class Player(Entity):
     """ Игрок """
 
     def __init__(self, sprite_groups,
-                 player_image: pygame.Surface, hp: int,
+                 player_image: pygame.Surface,
                  pos_x: int, pos_y: int) -> None:
         """
         :param player_group: Групп, куда будет добавлен игрок
@@ -558,7 +563,7 @@ class Bullet(pygame.sprite.Sprite):
     def __init__(self, bullet_group: pygame.sprite.Group,
                  bullet_image: pygame.Surface,
                  user_direction: Literal[0, 1],
-                 pos_x, pos_y, is_enemy_bullet=False) -> None:
+                 pos_x, pos_y, is_enemy_bullet=False, damage=1) -> None:
         """
         :param bullet_group: Группа, куда будет добавлен снаряд
         :param all_sprites: Все спрайты
@@ -569,6 +574,7 @@ class Bullet(pygame.sprite.Sprite):
         :key is_enemy_bullet: флаг для определения пули врага и игрока
         """
         super().__init__(bullet_group)
+        self.damage = damage
         # Счетчик дальности полета
         self.destroy_timer = 45
         # Изображение снаряда
@@ -630,15 +636,12 @@ class Bullet(pygame.sprite.Sprite):
                 not pygame.sprite.spritecollideany(self, player_group):
             hit_sounds[0].play()
             self.kill()
-        # Пробегаемся по переданным группам НЕ РАЗРУШАЕМЫХ спрайтов,
-        # в которых будет проверяться столкновение
-        for indestructible_group in indestructible_groups:
-            # Если снаряд столкнулся с каким-то из спрайтов и этот спрайт не
-            # игрок, то удаляем снаряд
-            if pygame.sprite.spritecollideany(self, indestructible_group) and \
-                    not pygame.sprite.spritecollideany(self, player_group):
-                hit_sounds[1].play()
-                self.kill()
+        # Если снаряд столкнулся с каким-то из спрайтов и этот спрайт не
+        # игрок, то удаляем снаряд
+        if pygame.sprite.spritecollideany(self, indestructible_groups) and \
+                not pygame.sprite.spritecollideany(self, player_group):
+            hit_sounds[1].play()
+            self.kill()
 
         # Если пуля вражеская, то проверяем пересечение со спрайтом игрока и
         # отнимаем либо щит, либо хп
