@@ -376,7 +376,9 @@ CHARACTERISTICS_BACKGROUND = load_image(
     'characteristics_background_image.png'
 )
 # Листы со спрайтами медной монетки
-COINS_SHEET = load_image('copper_coins_sheet8x1.png')
+COINS_SHEETS = [load_image('copper_coins_sheet8x1.png'),
+               load_image('silver_coins_sheet8x1.png'),
+               load_image('golden_coins_sheet8x1.png'),]
 # Счетчик снарядов в обойме
 AMMO_COUNTER_IMAGE = load_image('ammo_counter.png')
 # Счетчик монеток
@@ -396,11 +398,6 @@ PAUSE_STOP_SOUND = load_sound('pause_stop_sound.wav')
 
 # Изображения курсора
 ARROW_IMAGES = [MAIN_ARROW_IMAGE, CLICK_ARROW_IMAGE]
-
-# COINS_DATA = {
-#     'sheet': COINS_SHEET, 'columns': 8, 'rows': 1, 'percent': 50,
-#     'coins_group': coins_group, 'all_sprites': all_sprites
-# }
 
 CHARACTERISTICS_IMAGES = [
     load_image('ak47_characteristics_image.png'),
@@ -982,7 +979,7 @@ while running:
                     [ENEMY_DESTROY_SOUND, BOX_DESTROY_SOUND],
                     [HIT_SOUND, SHIELD_HIT_SOUND],
                     player_group, camera,
-                    virtual_surface
+                    virtual_surface, COINS_SHEETS, chunks
                 )
             # Обновляем таймер щита игрока
             if player.shield_recharge:

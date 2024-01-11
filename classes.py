@@ -1,4 +1,4 @@
-from random import randrange
+from random import randrange, random
 
 import pygame
 import sqlite3
@@ -12,12 +12,13 @@ from typing import Literal
 class AnimatedSprite(pygame.sprite.Sprite):
     def __init__(self, sheet, columns, rows, x, y, target_group, all_sprites):
         super().__init__(target_group, all_sprites)
+        self.x = x
+        self.y = y
         self.frames = []
         self.cut_sheet(sheet, columns, rows)
         self.cur_frame = 0
         self.counter = 0
         self.image = self.frames[self.cur_frame]
-        self.rect = self.rect.move(x, y)
 
     def cut_sheet(self, sheet, columns, rows):
         self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
@@ -33,12 +34,27 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.image = self.frames[self.cur_frame]
 
 
+class Coin(AnimatedSprite):
+    def __init__(self, sheets, type, columns, rows, x, y, target_group,
+                 all_sprites):
+        super().__init__(sheets[type], columns, rows, x, y,
+                         target_group, all_sprites)
+        cost = None
+        if type == 0:
+            cost = 1
+        elif type == 1:
+            cost = 5
+        elif type == 3:
+            cost = 15
+        self.cost = cost
+
+
 class Tile(pygame.sprite.Sprite):
     """ Базовый класс блоков """
 
     def __init__(self, tiles_group: pygame.sprite.Group,
                  all_sprites: pygame.sprite.Group,
-                 image, pos_x, pos_y) -> None:
+                 image, pos_x, pos_y, chunk_number) -> None:
         """
         :param tiles_group: Группа, куда будет добавлен блок
         :param all_sprites: Все спрайты
@@ -51,6 +67,7 @@ class Tile(pygame.sprite.Sprite):
                                                TILE_HEIGHT * pos_y)
         self.x = self.rect.x
         self.y = self.rect.y
+        self.chunk_number = chunk_number
 
 
 class PhantomTile(Tile):
@@ -58,7 +75,7 @@ class PhantomTile(Tile):
 
     def __init__(self, tiles_group: pygame.sprite.Group,
                  all_sprites: pygame.sprite.Group, image,
-                 pos_x: int, pos_y: int) -> None:
+                 pos_x: int, pos_y: int, chunk_number) -> None:
         """
         :param tiles_group: Группа, в которую будет добавлен текущий блок
         :param all_sprites: Все спрайты
@@ -67,7 +84,8 @@ class PhantomTile(Tile):
         :param pos_x: позиция по оси x
         :param pos_y: позиция по оси y
         """
-        super().__init__(tiles_group, all_sprites, image, pos_x, pos_y)
+        super().__init__(tiles_group, all_sprites, image, pos_x, pos_y,
+                         chunk_number)
 
 
 class Wall(Tile):
@@ -76,7 +94,7 @@ class Wall(Tile):
     def __init__(self, tiles_group: pygame.sprite.Group,
                  all_sprites: pygame.sprite.Group,
                  image,
-                 pos_x: int, pos_y: int) -> None:
+                 pos_x: int, pos_y: int, chunk_number) -> None:
         """
         :param tiles_group: Группа, в которую будет добавлен текущий блок
         :param all_sprites: Все спрайты
@@ -85,7 +103,8 @@ class Wall(Tile):
         :param pos_x: позиция по оси x
         :param pos_y: позиция по оси y
         """
-        super().__init__(tiles_group, all_sprites, image, pos_x, pos_y)
+        super().__init__(tiles_group, all_sprites, image, pos_x, pos_y,
+                         chunk_number)
 
 
 class Box(Tile):
@@ -93,7 +112,7 @@ class Box(Tile):
 
     def __init__(self, tiles_group: pygame.sprite.Group,
                  all_sprites: pygame.sprite.Group,
-                 image, pos_x: int, pos_y: int) -> None:
+                 image, pos_x: int, pos_y: int, chunk_number) -> None:
         """
         :param tiles_group: Группа, в которую будет добавлен текущий блок
         :param all_sprites: Все спрайты
@@ -101,7 +120,8 @@ class Box(Tile):
         :param pos_x: позиция по оси x
         :param pos_y: позиция по оси y
         """
-        super().__init__(tiles_group, all_sprites, image, pos_x, pos_y)
+        super().__init__(tiles_group, all_sprites, image, pos_x, pos_y,
+                         chunk_number)
         # Прочность блока
         self.type = 4
         self.hp = 5
@@ -120,7 +140,7 @@ class Box(Tile):
 
 
 class Chunk:
-    def __init__(self, tile_images, enemy_images, x, y, chunk_map,):
+    def __init__(self, tile_images, enemy_images, x, y, chunk_map, ):
         self.x, self.y = x, y
         # Все спрайты
         self.all_sprites = pygame.sprite.Group()
@@ -141,58 +161,63 @@ class Chunk:
                 if elem in ('w', 's', 'l', 'd', 'L', '^', 'D'):
                     Wall(
                         self.bricks_group, self.all_sprites,
-                        tile_images[elem], x + self.x * 8, y + self.y * 8
+                        tile_images[elem], x + self.x * 8, y + self.y * 8,
+                                           self.x + self.y * 8
                     )
                 elif elem in ('#', '_', '-', '*', '/', '0', '1', '2', '3',
                               '4', '5', '6', '6', '7', '8', '9'):
                     PhantomTile(
                         self.phantom_group, self.all_sprites,
-                        tile_images[elem], x + self.x * 8, y + self.y * 8
+                        tile_images[elem], x + self.x * 8, y + self.y * 8,
+                                           self.x + self.y * 8
                     )
                 elif elem in ('b', 'B'):
                     Box(
                         self.boxes_group, self.all_sprites,
-                        tile_images[elem], x + self.x * 8, y + self.y * 8
+                        tile_images[elem], x + self.x * 8, y + self.y * 8,
+                                           self.x + self.y * 8
                     )
                 elif elem == 'o':
                     Enemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[0], x + self.x * 8, y + self.y * 8,
-                        is_static=True
+                                         self.x + self.y * 8, is_static=True
                     )
                 elif elem == 'O':
                     Enemy([self.enemies_group, self.all_sprites],
-                          enemy_images[0], x + self.x * 8, y + self.y * 8)
+                          enemy_images[0], x + self.x * 8, y + self.y * 8,
+                          self.x + self.y * 8)
                 elif elem == 'h':
                     HeavyEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[1], x + self.x * 8, y + self.y * 8,
-                        is_static=True
+                                         self.x + self.y * 8, is_static=True
                     )
                 elif elem == 'H':
                     HeavyEnemy([self.enemies_group, self.all_sprites],
                                enemy_images[1], x + self.x * 8,
-                               y + self.y * 8)
+                               y + self.y * 8, self.x + self.y * 8)
                 elif elem == 'a':
                     ArmoredEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[2], x + self.x * 8, y + self.y * 8,
-                        is_static=True
+                                         self.x + self.y * 8, is_static=True
                     )
                 elif elem == 'A':
                     ArmoredEnemy([self.enemies_group, self.all_sprites],
                                  enemy_images[2], x + self.x * 8,
-                                 y + self.y * 8)
+                                 y + self.y * 8, self.x + self.y * 8)
                 elif elem == 'm':
                     MarksmanEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[3], x + self.x * 8, y + self.y * 8,
-                        is_static=True
+                                         self.x + self.y * 8, is_static=True
                     )
                 elif elem == 'M':
                     MarksmanEnemy(
                         [self.enemies_group, self.all_sprites],
-                        enemy_images[3], x + self.x * 8, y + self.y * 8
+                        enemy_images[3], x + self.x * 8, y + self.y * 8,
+                                         self.x + self.y * 8
                     )
 
     def render(self, screen, camera, player_group, shot_sounds,
@@ -251,10 +276,8 @@ class Chunk:
             sprite.rect.x = sprite.x - camera.x + camera.dx
             sprite.rect.y = sprite.y - camera.y + camera.dy
 
-        self.all_sprites.draw(screen)
-        self.bricks_group .draw(screen)
         self.phantom_group.draw(screen)
-        self.coins_group.draw(screen)
+        self.bricks_group.draw(screen)
 
         target_group = pygame.sprite.Group()
         target_group.add(self.boxes_group)
@@ -274,6 +297,13 @@ class Chunk:
                 enemy.y += 5
 
         self.boxes_group.draw(screen)
+        for coin in self.coins_group:
+            if coin.counter == 2:
+                coin.update()
+                coin.counter = 0
+            else:
+                coin.counter += 1
+        self.coins_group.draw(screen)
         self.enemies_group.draw(screen)
 
 
@@ -412,6 +442,7 @@ class Enemy(Entity):
     def __init__(self, sprite_groups,
                  enemy_image: pygame.Surface,
                  pos_x: int, pos_y: int,
+                 chunk_number,
                  is_static=False, max_distance=150,
                  direction=DIRECTION_LEFT) -> None:
         """
@@ -428,6 +459,8 @@ class Enemy(Entity):
         # смотрит
         if direction == DIRECTION_LEFT:
             self.image = pygame.transform.flip(enemy_image, True, False)
+
+        self.chunk_number = chunk_number
 
         self.type = 0
         self.x -= 24
@@ -508,10 +541,11 @@ class HeavyEnemy(Enemy):
     def __init__(self, sprite_groups,
                  enemy_image: pygame.Surface,
                  pos_x: int, pos_y: int,
+                 chunk_number,
                  is_static=False, max_distance=100,
                  direction=DIRECTION_LEFT) -> None:
         super().__init__(sprite_groups, enemy_image, pos_x, pos_y,
-                         is_static, max_distance, direction)
+                         chunk_number, is_static, max_distance, direction)
         self.type = 1
         self.hp = 30
         self.damage = 1
@@ -524,10 +558,11 @@ class ArmoredEnemy(Enemy):
     def __init__(self, sprite_groups,
                  enemy_image: pygame.Surface,
                  pos_x: int, pos_y: int,
+                 chunk_number,
                  is_static=False, max_distance=150,
                  direction=DIRECTION_LEFT) -> None:
         super().__init__(sprite_groups, enemy_image, pos_x, pos_y,
-                         is_static, max_distance, direction)
+                         chunk_number, is_static, max_distance, direction)
         self.type = 2
         self.hp = 7
         self.clip_size = 2
@@ -539,11 +574,11 @@ class ArmoredEnemy(Enemy):
 class MarksmanEnemy(Enemy):
     def __init__(self, sprite_groups,
                  enemy_image: pygame.Surface,
-                 pos_x: int, pos_y: int,
+                 pos_x: int, pos_y: int, chunk_number,
                  is_static=False, max_distance=70,
                  direction=DIRECTION_LEFT) -> None:
         super().__init__(sprite_groups, enemy_image, pos_x, pos_y,
-                         is_static, max_distance, direction)
+                         chunk_number, is_static, max_distance, direction)
         self.type = 3
         self.hp = 7
         self.clip_size = 1
@@ -592,7 +627,7 @@ class Bullet(pygame.sprite.Sprite):
 
     def update(self, destructible_groups, indestructible_groups,
                destroy_sounds, hit_sounds, player_group, camera,
-               screen):
+               screen, drop_images, chunks):
         """ Перемещение снаряда """
         self.destroy_timer -= 1
         if not self.destroy_timer:
@@ -618,12 +653,30 @@ class Bullet(pygame.sprite.Sprite):
                         self.kill()
                         return
                 destructible_sprites_hit_list[0].hp -= 1
-                if not destructible_sprites_hit_list[0].hp:
+                if destructible_sprites_hit_list[0].hp <= 0:
                     sprite_type = destructible_sprites_hit_list[0].type
                     if sprite_type in (0, 1, 2, 3):
                         destroy_sounds[0].play()
                     elif sprite_type in (4,):
                         destroy_sounds[1].play()
+                    chance = random()
+                    coin_type = None
+                    if chance <= 0.15:
+                        coin_type = 2
+                    elif 0.15 < chance <= 0.4:
+                        coin_type = 1
+                    elif 0.4 < chance <= 0.7:
+                        coin_type = 0
+                    if coin_type is not None:
+                        Coin(
+                            drop_images[:3], coin_type, 8, 1,
+                            destructible_sprites_hit_list[0].x + 5,
+                            destructible_sprites_hit_list[0].y + 5,
+                            chunks[destructible_sprites_hit_list[
+                                0].chunk_number].coins_group,
+                            chunks[destructible_sprites_hit_list[
+                                0].chunk_number].all_sprites
+                        )
                     destructible_sprites_hit_list[0].kill()
             if destructible_sprites_hit_list[0].type in (4,) or \
                     not self.is_enemy_bullet:
