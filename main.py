@@ -16,7 +16,8 @@ from pygame import Rect
 from constants import WIDTH, HEIGHT, FPS, STEP, DIRECTION_LEFT, \
     DIRECTION_RIGHT, BORDER_WIDTH, IMPROVEMENT_SCALE_WIDTH, BULLET_WIDTH
 
-from classes import Player, Camera, Bullet, Button, Chunk
+from classes import Player, Camera, Bullet, Button, Chunk, ImprovementScales, \
+    ImprovementScale
 
 # Подключаемся к базе данных
 con = sqlite3.connect('DataBase.sqlite')
@@ -420,9 +421,6 @@ button_pushed = False
 # Индекс текущего изображения курсора
 arrow_idx = 0
 
-# Задержка между выстрелами
-shot_delay = 0
-
 # Стоит ли игра на паузе
 pause = False
 
@@ -430,62 +428,22 @@ pause = False
 current_menu = 0
 
 improvement_scales = {
-    'ak-47': [
+    'ak-47': ImprovementScales(
         [
-            [
-                pygame.Rect(settings[0], settings[1], settings[2],
-                            settings[3]),
-                pygame.Rect(settings[4], settings[5], settings[6],
-                            settings[7]),
-                0, 0
-            ] for settings in (
-                (337, 220, 0, 12, 337 + BORDER_WIDTH, 220 + BORDER_WIDTH, 0,
-                 12 - BORDER_WIDTH * 2, 0),
-                (337, 269, 0, 12, 337 + BORDER_WIDTH, 269 + BORDER_WIDTH, 0,
-                 12 - BORDER_WIDTH * 2, 0),
-                (337, 316, 0, 12, 337 + BORDER_WIDTH, 269 + BORDER_WIDTH, 0,
-                 12 - BORDER_WIDTH * 2, 0)
-            )
-        ], [False, False, False], [
-            [10, 45, 100, 250, 500, 'max'],
-            [10, 60, 150, 300, 600, 'max'],
-            [10, 45, 100, 250, 500, 'max']
+            ImprovementScale(337, 220, 0, 12, BORDER_WIDTH, 'Shot_delay', cur),
+            ImprovementScale(337, 269, 0, 12, BORDER_WIDTH, 'Damage', cur),
+            ImprovementScale(337, 316, 0, 12, BORDER_WIDTH, 'Ammo', cur)
         ],
+        ACTIVE_UPGRADE_BUTTON_IMAGE, INACTIVE_UPGRADE_BUTTON_IMAGE,
+        player, cur, con, UPGRADE_SOUND
+    ),
+    'player': ImprovementScales(
         [
-            lambda: print('Увеличение скорости стрельбы'),
-            lambda: print('Увеличение урона'),
-            lambda: print('Увеличение объёма магазина')
-        ]
-    ],
-    'player': [
-        [
-            [
-                pygame.Rect(settings[0], settings[1], settings[2],
-                            settings[3]),
-                pygame.Rect(settings[4], settings[5], settings[6],
-                            settings[7]),
-                0, 0
-            ] for settings in (
-                (337, 220, 0, 12, 337 + BORDER_WIDTH, 220 + BORDER_WIDTH, 0,
-                 12 - BORDER_WIDTH * 2, 0),
-                (337, 269, 0, 12, 337 + BORDER_WIDTH, 269 + 69 + BORDER_WIDTH,
-                 0, 12 - BORDER_WIDTH * 2, 0)
-            )
-        ], [False, False, True], [
-            [10, 45, 100, 250, 500, 'max'],
-            [10, 45, 100, 250, 500, 'max']
-        ],
-        [
-            lambda: print('Увеличение запаса здоровья'),
-            lambda: print('Улучшение щита')
-        ]
-    ]
-}
-
-# Значения для увеличения характеристик и имена колонок в БД
-improvement_values = {
-    'ak-47': (('Shot_delay', 3), ('Damage', 0.5), ('Ammo', 2)),
-    'player': (('HP', 1), ('Shields', 1))
+            ImprovementScale(337, 220, 0, 12, BORDER_WIDTH, 'HP', cur),
+            ImprovementScale(337, 269, 0, 12, BORDER_WIDTH, 'Shields', cur)
+        ], ACTIVE_UPGRADE_BUTTON_IMAGE, INACTIVE_UPGRADE_BUTTON_IMAGE,
+        player, cur, con, UPGRADE_SOUND
+    )
 }
 
 blured_background_image = None
@@ -515,7 +473,7 @@ def start_game():
 
 def return_to_pause_menu():
     global current_menu, pause
-    del buttons[-6:]
+    del buttons[-3:]
     buttons.append(Button(
         152, 38, WIDTH // 2 - 78, HEIGHT // 2 - 32,
         ACTIVE_CONTINUE_BUTTON_IMAGE,
@@ -577,7 +535,7 @@ def return_to_main_menu():
 
 
 def open_characteristics_menu():
-    global current_background_image, buttons, current_menu
+    global buttons, current_menu
     del buttons[-3:]
     current_menu = 1
     buttons.append(Button(
@@ -598,20 +556,14 @@ def open_characteristics_menu():
         INACTIVE_LEFT_SHIFT_BUTTON_IMAGE,
         f'left_shift_button', partial(shift_characteristics_idx, 0)
     ))
-    for idx in range(len(
-            improvement_scales[current_characteristics_target][0])
-    ):
-        buttons.append(Button(
-            21, 21, WIDTH // 2 + 72, CHARACTERISTICS_BUTTONS_SETTINGS[idx],
-            ACTIVE_UPGRADE_BUTTON_IMAGE,
-            INACTIVE_UPGRADE_BUTTON_IMAGE,
-            f'upgrade_button_{idx + 1}', partial(upgrade, idx)
-        ))
-    current_background_image = CHARACTERISTICS_BACKGROUND
 
 
 def shift_characteristics_idx(direction):
     global current_characteristics_target_idx, current_characteristics_target
+    for button in improvement_scales[
+        current_characteristics_target
+    ].upgrade_buttons:
+        button.is_visible = False
     if direction == 0:
         current_characteristics_target_idx -= 1
         if current_characteristics_target_idx < 0:
@@ -623,117 +575,16 @@ def shift_characteristics_idx(direction):
     current_characteristics_target = list(improvement_scales.keys())[
         current_characteristics_target_idx
     ]
-    for idx in range(1, 4):
-        if improvement_scales[current_characteristics_target][1][-idx]:
-            buttons[-idx].is_visible = False
-        else:
-            buttons[-idx].is_visible = True
-    for idx in range(1, 4 - len(
-            improvement_scales[current_characteristics_target][0]
-    )):
-        buttons[-idx].is_visible = False
-
-
-def upgrade(idx):
-    global improvement_scales, buttons
-    # проверка наличия нужной суммы монет для пользователя
-    if player.coins - improvement_scales[current_characteristics_target][
-        2][idx][
-        improvement_scales[current_characteristics_target][0][idx][3]
-    ] >= 0:
-        # вычитание цены из общей суммы монет пользователя и обновление
-        # баланса в БД
-        player.coins -= improvement_scales[current_characteristics_target][2][idx][
-            improvement_scales[current_characteristics_target][0][idx][3]
-        ]
-        cur.execute(f'UPDATE Player_data SET Coins = {player.coins}')
-        con.commit()
-        # проверка на заполнение полоски до конца (всего 5 делений по 0.2)
-        if improvement_scales[current_characteristics_target][0][idx][2] != 1:
-            UPGRADE_SOUND.play()
-            # запуск lambda функций
-            improvement_scales[current_characteristics_target][3][idx]()
-            col = improvement_values[current_characteristics_target][idx][0]
-            value = improvement_values[current_characteristics_target][idx][1]
-            # Проверяем, что изменяемая характеристика не скорость стрельбы
-            if col != 'Shot_delay':
-                # Берем старое значение
-                old_value = cur.execute(
-                    f'SELECT {col} FROM Player_data'
-                ).fetchone()[0]
-                # Присваиваем новое
-                cur.execute(
-                    f"UPDATE Player_data SET {col} = {old_value + value}"
-                )
-                con.commit()
-            else:
-                # Для скорости стрельбы логика та же, но значение мы отнимаем
-                old_value = cur.execute(
-                    f'SELECT {col} FROM Player_data'
-                ).fetchone()[0]
-                cur.execute(
-                    f"UPDATE Player_data SET {col} = {old_value - value}"
-                )
-                con.commit()
-            # обновляем измененную величину
-            update_player_scales(current_characteristics_target, col)
-            # увеличение полоски
-            improvement_scales[current_characteristics_target][0][idx][2] += \
-                0.2
-            # изменение цены для покупки
-            improvement_scales[current_characteristics_target][0][idx][3] += 1
-            # увеличение длинны темного прямоугольника (за светлым)
-            improvement_scales[current_characteristics_target][0][idx][
-                0].width = \
-                IMPROVEMENT_SCALE_WIDTH * improvement_scales[
-                    current_characteristics_target
-                ][0][idx][2]
-            # увеличение светлой полоски
-            improvement_scales[current_characteristics_target][0][idx][
-                1].width = \
-                IMPROVEMENT_SCALE_WIDTH * \
-                improvement_scales[
-                    current_characteristics_target
-                ][0][idx][2] - BORDER_WIDTH * 2
-            # если полоска дошла до конца, то обозначается полная прокачка
-            # характеристики и кнопка становится невидима
-            if improvement_scales[current_characteristics_target][0][idx][2] \
-                    == 1:
-                improvement_scales[current_characteristics_target][1][
-                    idx] = True
-                buttons[-(3 - idx)].is_visible = False
-
-
-def update_player_scales(characteristic: str, scale: str) -> None:
-    """
-    Функция для обновления переменных после изменения характеристик в БД
-    :param characteristic: категория характеристики (ak-47 | player)
-    :param scale: характеристика из категории
-    """
-
-    global player, shot_delay
-    if characteristic == 'ak-47':
-        if scale == 'Ammo':
-            player.ammo = cur.execute(
-                'SELECT Ammo FROM Player_data'
-            ).fetchone()[0]
-        elif scale == 'Shot_delay':
-            shot_delay = cur.execute(
-                'SELECT Shot_delay FROM Player_data'
-            ).fetchone()[0]
-        elif scale == 'Damage':
-            player.damage = cur.execute(
-                "SELECT Damage FROM Player_data"
-            ).fetchone()[0]
-    elif characteristic == 'player':
-        if scale == 'HP':
-            player.hp = cur.execute(
-                "SELECT HP FROM Player_data"
-            ).fetchone()[0]
-        elif scale == 'Shields':
-            player.shield = cur.execute(
-                'SELECT Shields FROM Player_data'
-            ).fetchone()[0]
+    for index, button in enumerate(improvement_scales[
+        current_characteristics_target
+    ].upgrade_buttons):
+        print(improvement_scales[
+            current_characteristics_target
+        ].scale_objects[index].current_cost)
+        if improvement_scales[
+            current_characteristics_target
+        ].scale_objects[index].current_cost != 'max':
+            button.is_visible = True
 
 
 def continue_game():
@@ -915,7 +766,7 @@ while running:
                 button_pushed = False
     if start:
         if not pause:
-            if not shot_delay:
+            if not player.shot_delay:
                 if button_pushed and player.ammo:
                     player.ammo -= 1
                     if player.direction == DIRECTION_LEFT:
@@ -930,9 +781,9 @@ while running:
                         player.y + player.rect.h // 2 + 2,
                         damage=player.damage
                     )
-                    shot_delay = 25
+                    player.shot_delay = 25
             else:
-                shot_delay -= 1
+                player.shot_delay -= 1
 
             if player.recharge_timer:
                 player.recharge_timer -= 1
@@ -1045,20 +896,29 @@ while running:
                 virtual_surface.blit(CHARACTERISTICS_IMAGES[
                                 current_characteristics_target_idx
                             ], (300, 91))
-                for idx, improvement_scale in enumerate(
+                for index, improvement_scale in enumerate(
                         improvement_scales[
                             current_characteristics_target
-                        ][0]
+                        ].scale_objects
                 ):
-                    pygame.draw.rect(virtual_surface, '#d19900', improvement_scale[0])
-                    pygame.draw.rect(virtual_surface, '#fff200', improvement_scale[1])
-                    print_text(
-                        str(improvement_scales[
-                                current_characteristics_target
-                            ][2][idx][improvement_scale[3]]), 313,
-                        220 + idx * 48,
-                        font_size=9
+                    pygame.draw.rect(
+                        virtual_surface, '#d19900',
+                        improvement_scale.external_rect
                     )
+                    pygame.draw.rect(
+                        virtual_surface, '#fff200',
+                        improvement_scale.internal_rect
+                    )
+                    print_text(
+                        improvement_scale.current_cost,
+                        313, 220 + index * 48, font_size=9
+                    )
+                for button in improvement_scales[
+                    current_characteristics_target
+                ].upgrade_buttons:
+                    cur_idx = button.draw(virtual_surface)
+                    if cur_idx:
+                        arrow_idx = cur_idx
             elif current_menu == 2:
                 virtual_surface.blit(PAUSE_BACKGROUND, (0, 0))
     else:

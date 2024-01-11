@@ -6,6 +6,7 @@ import sqlite3
 from constants import TILE_WIDTH, TILE_HEIGHT, WIDTH, HEIGHT, \
     DIRECTION_RIGHT, BULLET_SPEED, DIRECTION_LEFT, BULLET_WIDTH
 
+from functools import partial
 from typing import Literal
 
 
@@ -453,10 +454,14 @@ class Player(Entity):
         self.ammo = self.cur.execute(
             'SELECT Ammo FROM Player_data'
         ).fetchone()[0]
+        # Скорость стерльбы
+        self.shot_delay = 0
         # Таймер перезарядки
         self.recharge_timer = 0
         # Направление, куда игрок смотрит
         self.direction: Literal[0, 1] = DIRECTION_RIGHT
+        # Закрываем подключение к бд
+        self.con.close()
 
 
 class Enemy(Entity):
@@ -800,3 +805,139 @@ class Ray(pygame.sprite.Sprite):
         if pygame.sprite.spritecollideany(self, player_group):
             return True
         return False
+
+
+class ImprovementScalesHandler:
+    pass
+
+
+class ImprovementScales:
+
+    def __init__(
+            self, scale_objects, active_upgrade_button_image,
+            inactive_upgrade_button_image, player, cur, con, upgrade_sound
+    ):
+
+        self.scale_objects = scale_objects
+        self.upgrade_buttons = []
+
+        for index in range(len(self.scale_objects)):
+            self.upgrade_buttons.append(Button(
+                21, 21, 472, 415 + index * 48,
+                active_upgrade_button_image,
+                inactive_upgrade_button_image,
+                f'upgrade_button{index + 1}', partial(
+                    self.upgrade, index, player, cur, con, upgrade_sound
+                )
+            ))
+
+    def upgrade(self, index, player, cur, con, upgrade_sound):
+        sign = 1
+        # проверка наличия нужной суммы монет для пользователя
+        if player.coins - self.scale_objects[index].current_cost >= 0:
+            # вычитание цены из общей суммы монет пользователя и обновление
+            # баланса в БД
+            player.coins -= self.scale_objects[index].current_cost
+            cur.execute(f'UPDATE Player_data SET Coins = {player.coins}')
+            con.commit()
+            # проверка на заполнение полоски до конца (всего 5 делений по 0.2)
+            if self.scale_objects[index].current_cost != 'max':
+                upgrade_sound.play()
+                # изменение характеристики
+                if self.scale_objects[index].scale_name != 'Shot_delay':
+                    sign = -1
+
+                # Берем старое значение
+                old_value = cur.execute(
+                    f'SELECT {self.scale_objects[index].scale_name} '
+                    f'FROM Player_data'
+                ).fetchone()[0]
+                # Присваиваем новое
+                cur.execute(
+                    f"""
+                    UPDATE Player_data SET 
+                    {self.scale_objects[index].scale_name} = 
+                    {old_value + self.scale_objects[index].delta_value * sign}
+                    """
+                )
+                con.commit()
+                # обновляем измененную величину
+                self.update_player_scales(
+                    self.scale_objects[index].scale_name, cur, player
+                )
+                # изменение цены для покупки
+                self.scale_objects[index].current_cost = cur.execute(
+                    f"""
+                    SELECT {self.scale_objects[index].scale_name} 
+                    FROM Scales_costs WHERE Id = 
+                    {self.scale_objects[index].stage + 1}
+                    """
+                ).fetchone()[0]
+                # увеличение длинны темного прямоугольника (за светлым)
+                self.scale_objects[index].internal_rect.width += \
+                    self.scale_objects[index].max_width * 0.2
+                # увеличение светлой полоски
+                self.scale_objects[index].external_rect.width += \
+                    self.scale_objects[index].max_width * 0.2
+                # если полоска дошла до конца, то обозначается полная прокачка
+                # характеристики и кнопка становится невидима
+                if self.scale_objects[index].current_cost == 'max':
+                    self.upgrade_buttons[index].is_visible = False
+
+    def update_player_scales(self, scale: str, cur, player: Player) -> None:
+        """
+        Функция для обновления переменных после изменения характеристик в БД
+        :param scale: характеристика из категории
+        :param cur: курсор базы данных
+        :param player: объект класса Player
+        """
+        if scale == 'Ammo':
+            player.ammo = cur.execute(
+                'SELECT Ammo FROM Player_data'
+            ).fetchone()[0]
+        elif scale == 'Shot_delay':
+            player.shot_delay = cur.execute(
+                'SELECT Shot_delay FROM Player_data'
+            ).fetchone()[0]
+        elif scale == 'Damage':
+            player.damage = cur.execute(
+                "SELECT Damage FROM Player_data"
+            ).fetchone()[0]
+        elif scale == 'HP':
+            player.hp = cur.execute(
+                "SELECT HP FROM Player_data"
+            ).fetchone()[0]
+        elif scale == 'Shields':
+            player.shield = cur.execute(
+                'SELECT Shields FROM Player_data'
+            ).fetchone()[0]
+
+
+class ImprovementScale:
+
+    def __init__(self, pos_x, pos_y, width, height,
+                 border_width, scale_name, cur):
+        self.scale_name = scale_name
+
+        self.stage = cur.execute(
+            f'SELECT {scale_name} FROM Scales'
+        ).fetchone()[0]
+
+        self.external_rect = pygame.Rect(
+            pos_x, pos_y, width * 0.2 * self.stage, height
+        )
+        self.internal_rect = pygame.Rect(
+            pos_x + border_width, pos_y + border_width,
+            width * 0.2 * self.stage, height - (border_width * 2)
+        )
+
+        self.current_cost = cur.execute(
+            f'SELECT {scale_name} FROM Scales_costs WHERE Id = '
+            f'{self.stage + 1}'
+        ).fetchone()[0]
+
+        self.delta_value = cur.execute(
+            f'SELECT {scale_name} FROM Scales_delta'
+        ).fetchone()[0]
+
+        self.max_width = width
