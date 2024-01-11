@@ -2,24 +2,30 @@ import os
 import sys
 from ctypes import windll
 from functools import partial
-from typing import Union
+from typing import Union, Optional
 
+import numpy as np
 import pygame
 import win32gui
 import win32ui
 from PIL import Image, ImageFilter
+from pygame import RESIZABLE, transform, VIDEORESIZE
 
 from constants import WIDTH, HEIGHT, FPS, STEP, DIRECTION_LEFT, \
-    DIRECTION_RIGHT, BORDER_WIDTH, IMPROVEMENT_SCALE_WIDTH
+    DIRECTION_RIGHT, BORDER_WIDTH, IMPROVEMENT_SCALE_WIDTH, BULLET_WIDTH
 
 from classes import Player, Enemy, Wall, Box, Camera, Bullet, Button, Ray, \
-    PhantomTile
+    PhantomTile, Chunk
 
 # Задаём параметры приложения
 pygame.init()
 pygame.key.set_repeat(200, 70)
 
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+screen = pygame.display.set_mode((WIDTH, HEIGHT), RESIZABLE)
+
+virtual_surface = pygame.Surface((WIDTH, HEIGHT))
+current_size = screen.get_size()
+
 clock = pygame.time.Clock()
 
 # Прячем родной курсор
@@ -30,30 +36,10 @@ pygame.mixer.music.load("data/sounds/main_saundtrack.mp3")
 pygame.mixer.music.play()
 
 # Игрок
-player = None
+player: Optional[Player] = None
 
-# Все спрайты
-all_sprites = pygame.sprite.Group()
-# Спрайты коробок
-boxes_group = pygame.sprite.Group()
-# Спрайты кирпичных блоков
-bricks_group = pygame.sprite.Group()
-# Спрайты, где есть игрок
 player_group = pygame.sprite.Group()
-# Спрайты пулей
 bullet_group = pygame.sprite.Group()
-# Спрайты монеток
-coins_group = pygame.sprite.Group()
-# Спрайты врагов
-enemies_group = pygame.sprite.Group()
-# Спрайты лучей
-rays_group = pygame.sprite.Group()
-# Группа всех статичных блоков
-tile_group = pygame.sprite.Group()
-tile_group.add(bricks_group)
-tile_group.add(boxes_group)
-# Группа фантомных блоков (задний фон и украшения)
-phantom_group = pygame.sprite.Group()
 
 
 def load_image(filename: str) -> pygame.Surface:
@@ -88,7 +74,12 @@ def load_sound(filename: str):
     return sound
 
 
-def load_level(filename: str) -> list[str]:
+def grouper(iterable, n):
+    args = [iter(iterable)] * n
+    return zip(*args)
+
+
+def load_level(filename: str):
     """ Загрузчик уровня из -txt файла
 
     :param filename: Название файла, в котором лежит уровень
@@ -106,42 +97,24 @@ def load_level(filename: str) -> list[str]:
     max_width = max(map(len, level_map))
 
     # Дополняем каждую строку пустыми клетками ('.')
-    return list(map(lambda x: x.ljust(max_width, '.'), level_map))
+    level_map = list(map(lambda x: x.ljust(max_width, '.'), level_map))
+    return np.array(list(map(lambda x: [''.join(i) for i in grouper(x, 8)],
+                             level_map)))
 
 
-def generate_level(level: list[str]) -> tuple[Player, int, int]:
+def generate_level(level_map):
     """ Генерация уровня """
-    new_player, x, y = None, None, None
-    for y in range(len(level)):
-        for x in range(len(level[y])):
-            # Тут те тайлы, котрые не рушатся, создаётся соответствующий
-            # спрайт и добавляется в группу
-            if level[y][x] in ('w', 's', 'l', 'd', 'm', 'L', '^', 'D'):
-                Wall(bricks_group, all_sprites, TILE_IMAGES,
-                     TILE_NAMES[level[y][x]], x, y)
-            elif level[y][x] in ('#', '_', '-', '*', '/', '0', '1', '2',
-                                 '3'):
-                PhantomTile(phantom_group, all_sprites, TILE_IMAGES,
-                            TILE_NAMES[level[y][x]], x, y)
-            # Тут считывается местоположение игрока и создаётся его спрайт
-            # (НЕ НАДО СОЗДАВАТЬ В
-            # ФАЙЛЕ НЕСКОЛЬКИХ ИГРОКОВ!!!)
-            elif level[y][x] == '@':
-                new_player = Player(player_group, all_sprites, PLAYER_IMAGE,
-                                    5, x, y)
-            # Тут те тайлы, котрые имеют hp и их можно разрушить, создаётся
-            # соответствующий спрайт и добавляется в группу
-            elif level[y][x] == '<' or level[y][x] == '>':
-                if level[y][x] == '>':
-                    Enemy(enemies_group, all_sprites, ENEMY_IMAGE, x, y,
-                          direction=DIRECTION_RIGHT)
-                else:
-                    Enemy(enemies_group, all_sprites, ENEMY_IMAGE, x, y)
-            elif level[y][x] in ('b', 'B'):
-                Box(boxes_group, all_sprites, TILE_IMAGES,
-                    TILE_NAMES[level[y][x]], x, y)
-    # Вернем игрока, а также размер поля в клетках
-    return new_player, x, y
+    global level_x, level_y
+    chunks = []
+    player = Player((player_group,), PLAYER_IMAGE, 5, 9, 12)
+    level_x, level_y = 7, 3
+    for y1 in range(level_y):
+        for x1 in range(level_x):
+            chunks.append(Chunk(
+                TILE_IMAGES, ENEMY_IMAGES, x1, y1,
+                level_map[y1 * 8:(y1 + 1) * 8, x1:x1 + 1]
+            ))
+    return player, level_x, level_y, chunks
 
 
 def terminate() -> None:
@@ -166,7 +139,7 @@ def print_text(text: str, pos_x: int, pos_y: int,
     # Выбранный шрифт
     font = pygame.font.SysFont(font_name, font_size)
     # Отрисовываем на экране выбранный текст
-    screen.blit(font.render(text, True, font_color), (pos_x, pos_y))
+    virtual_surface.blit(font.render(text, True, font_color), (pos_x, pos_y),)
 
 
 def show_dashboard(ammo: int, coins: int) -> None:
@@ -177,9 +150,9 @@ def show_dashboard(ammo: int, coins: int) -> None:
     :param coins: Количество монет у игрока в данный момент
     """
     # Отрисовываем картинку для счётчика пуль
-    screen.blit(AMMO_COUNTER_IMAGE, (10, 10))
+    virtual_surface.blit(AMMO_COUNTER_IMAGE, (10, 10))
     # Отрисовываем картинку для счётчика монет
-    screen.blit(COIN_COUNTER_IMAGE, (650, 10))
+    virtual_surface.blit(COIN_COUNTER_IMAGE, (650, 10))
     # Отрисовываем количество пуль у игрока
     print_text(str(ammo) if ammo else '-', 112 if ammo > 9 else 115, 30,
                "white", font_size=18)
@@ -207,7 +180,7 @@ def get_screenshot() -> pygame.Surface:
     :return: Возвращаем заблюренный скриншот экрана с игрой и
     подготавливаем его для размещения на экране
     """
-    window = win32gui.FindWindow(None, 'pygame window')
+    window = win32gui.FindWindow(None, pygame.display.get_caption()[0])
 
     left, top, right, bot = win32gui.GetWindowRect(window)
     width = right - left
@@ -320,50 +293,32 @@ INACTIVE_UPGRADE_BUTTON_IMAGE = load_image(
 
 # Изображения тайлов
 TILE_IMAGES = {
-    'land': load_image('land.png'),
-    'light_land': load_image('light_land.png'),
-    'dirt': load_image('dirt.png'),
-    'mixed_dirt': load_image('mixed_dirt.png'),
-    'light_dirt': load_image('light_dirt.png'),
-    'box': load_image('box.png'),
-    'shelter_box': load_image('shelter_box.png'),
-    'shelter_floor': load_image('shelter_floor.png'),
-    'shelter_wall': load_image('shelter_wall.png'),
-    'down_shelter_floor': load_image('down_shelter_floor.png'),
-    'shelter_light': load_image('shelter_light.png'),
-    'shelter_small_door': load_image('shelter_small_door.png'),
-    'shelter_background_wall_1': load_image('shelter_background_wall_1.png'),
-    'shelter_background_wall_2': load_image('shelter_background_wall_2.png'),
-    'shelter_door': load_image('shelter_door.png'),
-    'storage_background_1': load_image('storage_background_image_1.png'),
-    'storage_background_2': load_image('storage_background_image_2.png'),
-    'water_treatment_room_background_1': load_image(
-        'water_treatment_room_background_image_1.png'
-    ),
-    'infirmary_background': load_image('infirmary_background_image.png')
-}
-
-# Названия тайлов
-TILE_NAMES = {
-    'l': 'land',
-    '^': 'light_land',
-    'd': 'dirt',
-    'b': 'box',
-    'B': 'shelter_box',
-    'L': 'light_dirt',
-    'm': 'mixed_dirt',
-    's': 'shelter_floor',
-    'w': 'shelter_wall',
-    '*': 'shelter_light',
-    '#': 'shelter_small_door',
-    '_': 'shelter_background_wall_1',
-    '-': 'shelter_background_wall_2',
-    '/': 'shelter_door',
-    'D': 'down_shelter_floor',
-    '0': 'storage_background_1',
-    '1': 'storage_background_2',
-    '2': 'water_treatment_room_background_1',
-    '3': 'infirmary_background'
+    'l': load_image('land.png'),
+    '^': load_image('light_land.png'),
+    'd': load_image('dirt.png'),
+    'm': load_image('mixed_dirt.png'),
+    'L': load_image('light_dirt.png'),
+    'b': load_image('box.png'),
+    'B': load_image('shelter_box.png'),
+    's': load_image('shelter_floor.png'),
+    'w': load_image('shelter_wall.png'),
+    'D': load_image('down_shelter_floor.png'),
+    '!': load_image('reactor_image.png'),
+    '*': load_image('shelter_light.png'),
+    '#': load_image('shelter_small_door.png'),
+    '_': load_image('shelter_background_wall_1.png'),
+    '-': load_image('shelter_background_wall_2.png'),
+    '/': load_image('elevator_background_image.png'),
+    '0': load_image('infirmary_background_image_1.png'),
+    '1': load_image('infirmary_background_image_2.png'),
+    '2': load_image('infirmary_background_image_3.png'),
+    '3': load_image('infirmary_background_image_4.png'),
+    '4': load_image('infirmary_background_image_5.png'),
+    '5': load_image('elevator_background_image_1.png'),
+    '6': load_image('elevator_background_image_2.png'),
+    '7': load_image('elevator_background_image_3.png'),
+    '8': load_image('elevator_background_image_4.png'),
+    '9': load_image('elevator_background_image_5.png'),
 }
 
 # ===== Изображения =====
@@ -375,22 +330,37 @@ SELECT_LEVEL_MENU_IMAGE = load_image('select_level_menu_image.png')
 PLAYER_IMAGE = load_image('artur.png')
 # Изображение пули
 BULLET_IMAGE = load_image('bullet.png')
-# Изображение врага
-ENEMY_IMAGE = load_image('ordinary_enemy_image.png')
-# Изображение heavy врага
-HEAVY_ENEMY_IMAGE = load_image('heavy_enemy.png')
+# Изображения врагов
+ENEMY_IMAGES = [
+    load_image('ordinary_enemy_image.png'),
+    load_image('heavy_enemy.png'),
+    load_image('armored_enemy.png'),
+    load_image('marksman_enemy.png')
+]
 # Изображение пули врага
 ENEMY_BULLET_IMAGE = load_image('enemy_bullet.png')
 # Звук подборам монет
 COIN_SELECTION_SOUND = pygame.mixer.Sound("data/sounds/coin_selection.wav")
 # Звук выстрела
 SHOT_SOUND = pygame.mixer.Sound("data/sounds/shot_sound.wav")
+# Звук выстрела тяжика (звуки выстрела минигана)
+HEAVY_ENEMY_SHOT_SOUND = pygame.mixer.Sound(
+    "data/sounds/heavy_enemy_shot_sound.wav"
+)
+ARMORED_ENEMY_SHOT_SOUND = pygame.mixer.Sound(
+    "data/sounds/armored_enemy_shot_sound.wav"
+)
+MARKSMAN_ENEMY_SHOT_SOUND = pygame.mixer.Sound(
+    "data/sounds/marksman_enemy_shot_sound.wav"
+)
 # Звук перезарядки
 RECHARGE_SOUND = pygame.mixer.Sound("data/sounds/recharge_sound.wav")
 # Звук разрушения коробки
 BOX_DESTROY_SOUND = pygame.mixer.Sound("data/sounds/box_destroy_sound.wav")
+ENEMY_DESTROY_SOUND = pygame.mixer.Sound("data/sounds/enemy_destroy_sound.wav")
 # Звук попадания в препятствие
 HIT_SOUND = pygame.mixer.Sound("data/sounds/hit_sound.wav")
+SHIELD_HIT_SOUND = pygame.mixer.Sound("data/sounds/shield_hit_sound.wav")
 # Задний фон
 BACKGROUND_IMAGE = load_image('background_image.jpg')
 # Задний фон в меню паузы
@@ -421,10 +391,10 @@ PAUSE_STOP_SOUND = load_sound('pause_stop_sound.wav')
 # Изображения курсора
 ARROW_IMAGES = [MAIN_ARROW_IMAGE, CLICK_ARROW_IMAGE]
 
-COINS_DATA = {
-    'sheet': COINS_SHEET, 'columns': 8, 'rows': 1, 'percent': 50,
-    'coins_group': coins_group, 'all_sprites': all_sprites
-}
+# COINS_DATA = {
+#     'sheet': COINS_SHEET, 'columns': 8, 'rows': 1, 'percent': 50,
+#     'coins_group': coins_group, 'all_sprites': all_sprites
+# }
 
 CHARACTERISTICS_IMAGES = [
     load_image('ak47_characteristics_image.png'),
@@ -519,16 +489,20 @@ current_characteristics_target = 'ak-47'
 current_characteristics_target_idx = 0
 
 start = False
+camera = False
+
+chunks = []
 
 
 def start_game():
-    global start, player, level_x, level_y, camera, all_sprites
-    for sprite in all_sprites:
-        sprite.kill()
+    global player, start, chunks, camera
     # Игрок, размер уровня в ширину и в высоту
-    player, level_x, level_y = generate_level(load_level('level_1.txt'))
-    # Камера
-    camera = Camera((level_x, level_y))
+    player, level_x, level_y, chunks = generate_level(
+        load_level('level_1.txt')
+    )
+    camera = Camera(player)
+    player.rect.x += camera.dx
+    player.rect.y += camera.dy
     start = True
     buttons.clear()
 
@@ -708,6 +682,29 @@ def quit():
     running = False
 
 
+def chunks_on_screen():
+    global camera, player
+    x1 = int((camera.x - (7 - player.grid_x) * 50) // (8 * 50))
+    y1 = int((camera.y - (7 - player.grid_y) * 50) // (8 * 50))
+
+    x2 = int(((camera.x - (7 - player.grid_x) * 50) + WIDTH) // (8 * 50))
+    y2 = int(((camera.y - (7 - player.grid_y) * 50) + WIDTH) // (8 * 50))
+
+    x1 = min(max(x1, 0), level_x - 1)
+    x2 = min(max(x2, 0), level_x - 1)
+
+    y1 = min(max(y1, 0), level_y - 1)
+    y2 = min(max(y2, 0), level_y - 1)
+
+    result = []
+
+    for y in range(y1, y2 + 1):
+        for x in range(x1, x2 + 1):
+            result.append(x + y * level_x)
+
+    return result
+
+
 def select_level():
     global current_menu, buttons, pause, start
     pause, start = False, False
@@ -764,61 +761,32 @@ buttons = [
     )
 ]
 
+frame = 0
+direction = 0
+on_ground = True
+
 # Игровой цикл
 while running:
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:
-                button_pushed = True
-            elif event.button == 3:
-                if player.ammo:
-                    player.ammo = 0
-                    RECHARGE_SOUND.play()
-                    player.recharge_timer = 120
-        if event.type == pygame.MOUSEBUTTONUP:
-            if event.button == 1:
-                button_pushed = False
+        if event.type == VIDEORESIZE:
+            current_size = event.size
         if start and event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
-                if not jump_counter:
+                if on_ground:
                     jump_counter = 20
+                    on_ground = False
             if event.key == pygame.K_a:
-                # Движение влево
-                if not (pygame.sprite.spritecollideany(player, bricks_group)
-                        or pygame.sprite.spritecollideany(
-                            player, boxes_group)):
-                    player.rect.x -= STEP
-                    player.direction = DIRECTION_LEFT
-                    player.image = pygame.transform.flip(PLAYER_IMAGE,
-                                                         True, False)
-                    collide_side = ''
-                elif collide_side != 'left' and collide_side:
-                    player.rect.x -= STEP
-                    player.direction = DIRECTION_LEFT
-                    player.image = pygame.transform.flip(PLAYER_IMAGE,
-                                                         True, False)
-                    collide_side = ''
-                else:
-                    collide_side = 'left'
+                direction = 1
+                player.direction = DIRECTION_LEFT
+                player.image = pygame.transform.flip(PLAYER_IMAGE,
+                                                     True, False)
             if event.key == pygame.K_d:
-                # Движение вправо
-                if not (pygame.sprite.spritecollideany(player, bricks_group)
-                        or pygame.sprite.spritecollideany(
-                            player, boxes_group)):
-                    player.rect.x += STEP
-                    player.direction = DIRECTION_RIGHT
-                    player.image = PLAYER_IMAGE
-                    collide_side = ''
-                elif collide_side != 'right' and collide_side:
-                    player.rect.x += STEP
-                    player.direction = DIRECTION_RIGHT
-                    player.image = PLAYER_IMAGE
-                    collide_side = ''
-                else:
-                    collide_side = 'right'
+                direction = 2
+                player.direction = DIRECTION_RIGHT
+                player.image = PLAYER_IMAGE
             if event.key == pygame.K_ESCAPE:
                 pause = not pause
                 if pause:
@@ -855,48 +823,39 @@ while running:
                         return_to_pause_menu()
                     elif current_menu == 2:
                         continue_game()
-
+        if start and event.type == pygame.KEYUP:
+            if event.key == pygame.K_a or event.key == pygame.K_d:
+                direction = 0
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                button_pushed = True
+            elif event.button == 3:
+                if player.ammo != 5:
+                    player.ammo = 0
+                    RECHARGE_SOUND.play()
+                    player.recharge_timer = 120
+        if event.type == pygame.MOUSEBUTTONUP:
+            if event.button == 1:
+                button_pushed = False
     if start:
         if not pause:
-
             if not shot_delay:
                 if button_pushed and player.ammo:
                     player.ammo -= 1
                     if player.direction == DIRECTION_LEFT:
-                        bullet_image = pygame.transform.flip(BULLET_IMAGE,
-                                                             True, False)
-                        x = player.rect.x
+                        x = player.x - BULLET_WIDTH
                     else:
-                        bullet_image = BULLET_IMAGE
-                        x = player.rect.x + player.rect.w
+                        x = player.x + player.rect.w + BULLET_WIDTH
                     SHOT_SOUND.play()
                     # Выпустить снаряд
-                    new_bul = Bullet(bullet_group, all_sprites, bullet_image,
-                                     player.direction,
-                                     x,
-                                     player.rect.y + player.rect.h // 2 + 2)
+                    new_bul = Bullet(
+                        bullet_group, BULLET_IMAGE, player.direction,
+                        x,
+                        player.y + player.rect.h // 2 + 2
+                    )
                     shot_delay = 25
             else:
                 shot_delay -= 1
-
-            if jump_counter > 0:
-                jump_counter -= 1
-                if not (pygame.sprite.spritecollideany(player, bricks_group)
-                        or pygame.sprite.spritecollideany(
-                            player, boxes_group)):
-                    player.rect.y -= 8
-                    collide_side = ''
-                else:
-                    jump_counter = 0
-            else:
-                collided = False
-
-                for sprite in bricks_group:
-                    if sprite.rect.collidepoint(player.rect.midbottom):
-                        collided = True
-
-                if not collided:
-                    player.rect.y += 2
 
             if player.recharge_timer:
                 player.recharge_timer -= 1
@@ -906,99 +865,92 @@ while running:
                 RECHARGE_SOUND.play()
                 player.recharge_timer = 120
 
+            destructible_groups = pygame.sprite.Group()
+            indestructible_groups = pygame.sprite.Group()
+
+            target_group = pygame.sprite.Group()
+
+            for chunk_idx in chunks_on_screen():
+                destructible_groups.add(chunks[chunk_idx].boxes_group)
+                destructible_groups.add(chunks[chunk_idx].enemies_group)
+                indestructible_groups.add(chunks[chunk_idx].bricks_group)
+                target_group.add(chunks[chunk_idx].bricks_group)
+                target_group.add(chunks[chunk_idx].boxes_group)
+
+            virtual_surface.blit(BACKGROUND_IMAGE, (0, 0))
             # Обновляем камеру
-            camera.update(player, collide_side)
+            for chunk_idx in chunks_on_screen():
+                # Перемещаем все спрайты
+                chunks[chunk_idx].render(
+                    virtual_surface, camera, player_group,
+                    [SHOT_SOUND, HEAVY_ENEMY_SHOT_SOUND,
+                     ARMORED_ENEMY_SHOT_SOUND, MARKSMAN_ENEMY_SHOT_SOUND],
+                    bullet_group, target_group, ENEMY_BULLET_IMAGE
+                )
 
-            # Перемещаем все спрайты
-            for sprite in all_sprites:
-                camera.apply(sprite)
-
-            # Перемещаем пули
             for bullet in bullet_group:
-                bullet.update([boxes_group, enemies_group],
-                              [bricks_group],
-                              COINS_DATA, BOX_DESTROY_SOUND, HIT_SOUND,
-                              player_group)
+                bullet.update(
+                    destructible_groups,
+                    indestructible_groups,
+                    [ENEMY_DESTROY_SOUND, BOX_DESTROY_SOUND],
+                    [HIT_SOUND, SHIELD_HIT_SOUND],
+                    player_group, camera,
+                    virtual_surface
+                )
+            player_group.draw(virtual_surface)
 
-            # Проверяем наличие игрока в поле зрения врага и перемещаем врагов
-            for enemy in enemies_group:
-                # Луч для проверки попадания игрока в поле зрения врага
-                if enemy.direction:
-                    enemy.ray = Ray(rays_group, enemy.direction,
-                                    enemy.rect.x + enemy.rect.w,
-                                    enemy.rect.y + enemy.rect.h // 2)
+            player.check_collision_sides(target_group)
+            if frame % 10:
+                if direction == 1:
+                    if not any(
+                            (
+                                    player.collide_list[4],
+                                    (
+                                            not player.collide_list[7] and
+                                            player.collide_list[2]
+                                    ),
+                                    (
+                                            not player.collide_list[6] and
+                                            player.collide_list[0]
+                                    )
+                            )
+                    ):
+                        camera.update(dx=-STEP)
+                elif direction == 2:
+                    if not any(
+                            (
+                                    player.collide_list[5],
+                                    (
+                                            not player.collide_list[7] and
+                                            player.collide_list[3]
+                                    ),
+                                    (
+                                            not player.collide_list[6] and
+                                            player.collide_list[1]
+                                    )
+                            )
+                    ):
+                        camera.update(dx=STEP)
+            if jump_counter:
+                jump_counter -= 1
+                if not player.collide_list[6]:
+                    camera.update(dy=-10)
+            elif not player.collide_list[7]:
+                if player.collide_list[2]:
+                    dx = 1
+                elif player.collide_list[3]:
+                    dx = -1
                 else:
-                    enemy.ray = Ray(rays_group, enemy.direction,
-                                    enemy.rect.x,
-                                    enemy.rect.y + enemy.rect.h // 2)
-
-                # Проверка пересечения с игроком лучами и переход в режим атаки
-                # для врага, если игрок в поле зрения
-                if enemy.ray.check_collide_with_player(player_group):
-                    enemy.attack_player = True
-                    enemy.speed = 0
-                    enemy.attack_timer = 120
-                else:
-                    if enemy.attack_timer:
-                        enemy.attack_timer -= 1
-                        if enemy.attack_timer == 0:
-                            enemy.attack_player = False
-                            enemy.speed = 1
-                    elif enemy.attack_timer == 0:
-                        enemy.attack_player = False
-                        enemy.speed = 1
-
-                # Создание пуль в случае, если враг в режиме атаки
-                if enemy.attack_player:
-                    if enemy.is_shoot:
-                        SHOT_SOUND.play()
-                        new_bullet = Bullet(bullet_group, all_sprites,
-                                            ENEMY_BULLET_IMAGE,
-                                            enemy.direction,
-                                            enemy.rect.x,
-                                            enemy.rect.y + enemy.rect.h // 2,
-                                            is_enemy_bullet=True)
-                        enemy.timer = 90
-                        enemy.is_shoot = False
-                    else:
-                        enemy.timer -= 1
-                        if enemy.timer == 0:
-                            enemy.is_shoot = True
-
-                enemy.update(player.direction)
-
-            for coin in coins_group:
-                if coin.counter == 3:
-                    coin.counter = 0
-                    coin.update()
-                else:
-                    coin.counter += 1
-
-            coins_collide_list = pygame.sprite.spritecollide(
-                player, coins_group, False
-            )
-            if coins_collide_list:
-                coins += 1
-                COIN_SELECTION_SOUND.play()
-                coins_collide_list[0].kill()
-
-            # Красим фон
-            screen.blit(BACKGROUND_IMAGE, (0, 0))
-            # Рисуем спрайты
-            phantom_group.draw(screen)
-            boxes_group.draw(screen)
-            bricks_group.draw(screen)
-            player_group.draw(screen)
-            bullet_group.draw(screen)
-            coins_group.draw(screen)
-            enemies_group.draw(screen)
-
+                    dx = 0
+                camera.update(dx, 5)
+            else:
+                on_ground = True
             show_dashboard(player.ammo, coins)
         else:
-            screen.blit(blured_background_image, (0, 0))
+            virtual_surface.blit(blured_background_image, (0, 0))
             if current_menu == 1:
-                screen.blit(CHARACTERISTICS_BACKGROUND, (0, 0))
-                screen.blit(CHARACTERISTICS_IMAGES[
+                virtual_surface.blit(CHARACTERISTICS_BACKGROUND, (0, 0))
+                virtual_surface.blit(CHARACTERISTICS_IMAGES[
                                 current_characteristics_target_idx
                             ], (300, 91))
                 for idx, improvement_scale in enumerate(
@@ -1006,8 +958,8 @@ while running:
                             current_characteristics_target
                         ][0]
                 ):
-                    pygame.draw.rect(screen, '#d19900', improvement_scale[0])
-                    pygame.draw.rect(screen, '#fff200', improvement_scale[1])
+                    pygame.draw.rect(virtual_surface, '#d19900', improvement_scale[0])
+                    pygame.draw.rect(virtual_surface, '#fff200', improvement_scale[1])
                     print_text(
                         str(improvement_scales[
                                 current_characteristics_target
@@ -1016,27 +968,34 @@ while running:
                         font_size=9
                     )
             elif current_menu == 2:
-                screen.blit(PAUSE_BACKGROUND, (0, 0))
-
-
+                virtual_surface.blit(PAUSE_BACKGROUND, (0, 0))
     else:
         if current_menu == 0:
-            screen.blit(MAIN_MENU_IMAGE, (0, 0))
+            virtual_surface.blit(MAIN_MENU_IMAGE, (0, 0))
         elif current_menu == 3:
-            screen.blit(SELECT_LEVEL_MENU_IMAGE, (0, 0))
+            virtual_surface.blit(SELECT_LEVEL_MENU_IMAGE, (0, 0))
 
     for button in buttons:
-        cur_idx = button.draw(screen)
+        cur_idx = button.draw(virtual_surface)
         if cur_idx:
             arrow_idx = cur_idx
 
     x, y = pygame.mouse.get_pos()
     if 0 < x < WIDTH and \
             0 < y < HEIGHT:
-        draw_arrow(screen, ARROW_IMAGES[arrow_idx], x, y)
+        draw_arrow(virtual_surface, ARROW_IMAGES[arrow_idx], x, y)
         arrow_idx = 0
+
+    scaled_surface = transform.scale(virtual_surface, current_size)
+    screen.blit(scaled_surface, (0, 0))
 
     pygame.display.flip()
     clock.tick(FPS)
+
+    frame += 1
+    if frame % 5 == 0:
+        pygame.display.set_caption(f'"Wasteland" FPS: '
+                                   f'{round(clock.get_fps())}')
+        frame = 0
 
 terminate()
