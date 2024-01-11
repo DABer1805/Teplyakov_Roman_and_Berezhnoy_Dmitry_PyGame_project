@@ -35,16 +35,18 @@ class AnimatedSprite(pygame.sprite.Sprite):
 
 
 class Coin(AnimatedSprite):
-    def __init__(self, sheets, type, columns, rows, x, y, target_group,
+    def __init__(self, selection_sound, sheets, type, columns, rows, x, y,
+                 target_group,
                  all_sprites):
         super().__init__(sheets[type], columns, rows, x, y,
                          target_group, all_sprites)
+        self.selection_sound = selection_sound
         cost = None
         if type == 0:
             cost = 1
         elif type == 1:
             cost = 5
-        elif type == 3:
+        elif type == 2:
             cost = 15
         self.cost = cost
 
@@ -162,62 +164,66 @@ class Chunk:
                     Wall(
                         self.bricks_group, self.all_sprites,
                         tile_images[elem], x + self.x * 8, y + self.y * 8,
-                                           self.x + self.y * 8
+                                           self.x + self.y * 8 - 1
                     )
                 elif elem in ('#', '_', '-', '*', '/', '0', '1', '2', '3',
                               '4', '5', '6', '6', '7', '8', '9'):
                     PhantomTile(
                         self.phantom_group, self.all_sprites,
                         tile_images[elem], x + self.x * 8, y + self.y * 8,
-                                           self.x + self.y * 8
+                                           self.x + self.y * 8 - 1
                     )
                 elif elem in ('b', 'B'):
                     Box(
                         self.boxes_group, self.all_sprites,
                         tile_images[elem], x + self.x * 8, y + self.y * 8,
-                                           self.x + self.y * 8
+                                           self.x + self.y * 8 - 1
                     )
                 elif elem == 'o':
                     Enemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[0], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * 8, is_static=True
+                                         self.x + self.y * 8 - 1,
+                        is_static=True
                     )
                 elif elem == 'O':
                     Enemy([self.enemies_group, self.all_sprites],
                           enemy_images[0], x + self.x * 8, y + self.y * 8,
-                          self.x + self.y * 8)
+                          self.x + self.y * 8 - 1)
                 elif elem == 'h':
                     HeavyEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[1], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * 8, is_static=True
+                                         self.x + self.y * 8 - 1,
+                        is_static=True
                     )
                 elif elem == 'H':
                     HeavyEnemy([self.enemies_group, self.all_sprites],
                                enemy_images[1], x + self.x * 8,
-                               y + self.y * 8, self.x + self.y * 8)
+                               y + self.y * 8, self.x + self.y * 8 - 1)
                 elif elem == 'a':
                     ArmoredEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[2], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * 8, is_static=True
+                                         self.x + self.y * 8 - 1,
+                        is_static=True
                     )
                 elif elem == 'A':
                     ArmoredEnemy([self.enemies_group, self.all_sprites],
                                  enemy_images[2], x + self.x * 8,
-                                 y + self.y * 8, self.x + self.y * 8)
+                                 y + self.y * 8, self.x + self.y * 8 - 1)
                 elif elem == 'm':
                     MarksmanEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[3], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * 8, is_static=True
+                                         self.x + self.y * 8 - 1,
+                        is_static=True
                     )
                 elif elem == 'M':
                     MarksmanEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[3], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * 8
+                                         self.x + self.y * 8 - 1
                     )
 
     def render(self, screen, camera, player_group, shot_sounds,
@@ -298,6 +304,15 @@ class Chunk:
 
         self.boxes_group.draw(screen)
         for coin in self.coins_group:
+            player = pygame.sprite.spritecollide(coin, player_group, False)
+            if pygame.sprite.spritecollideany(coin, player_group):
+                player[0].coins += coin.cost
+                coin.selection_sound.play()
+                coin.kill()
+
+            if pygame.sprite.spritecollideany(coin, self.boxes_group):
+                coin.y -= 7
+                coin.rect.y -= 5
             if coin.counter == 2:
                 coin.update()
                 coin.counter = 0
@@ -417,6 +432,14 @@ class Player(Entity):
         # Подключаемся к базе данных
         self.con = sqlite3.connect('DataBase.sqlite')
         self.cur = self.con.cursor()
+
+        self.coins = self.cur.execute(
+            "SELECT Coins FROM Player_data"
+        ).fetchone()[0]
+
+        self.damage = self.cur.execute(
+            "SELECT Damage FROM Player_data"
+        ).fetchone()[0]
 
         # HP игрока
         self.hp = self.cur.execute('SELECT HP FROM Player_data').fetchone()[0]
@@ -627,7 +650,7 @@ class Bullet(pygame.sprite.Sprite):
 
     def update(self, destructible_groups, indestructible_groups,
                destroy_sounds, hit_sounds, player_group, camera,
-               screen, drop_images, chunks):
+               screen, drop_images, selection_sound, chunks):
         """ Перемещение снаряда """
         self.destroy_timer -= 1
         if not self.destroy_timer:
@@ -669,7 +692,7 @@ class Bullet(pygame.sprite.Sprite):
                         coin_type = 0
                     if coin_type is not None:
                         Coin(
-                            drop_images[:3], coin_type, 8, 1,
+                            selection_sound, drop_images[:3], coin_type, 8, 1,
                             destructible_sprites_hit_list[0].x + 5,
                             destructible_sprites_hit_list[0].y + 5,
                             chunks[destructible_sprites_hit_list[

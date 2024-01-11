@@ -16,8 +16,7 @@ from pygame import Rect
 from constants import WIDTH, HEIGHT, FPS, STEP, DIRECTION_LEFT, \
     DIRECTION_RIGHT, BORDER_WIDTH, IMPROVEMENT_SCALE_WIDTH, BULLET_WIDTH
 
-from classes import Player, Enemy, Wall, Box, Camera, Bullet, Button, Ray, \
-    PhantomTile, Chunk
+from classes import Player, Camera, Bullet, Button, Chunk
 
 # Подключаемся к базе данных
 con = sqlite3.connect('DataBase.sqlite')
@@ -44,7 +43,6 @@ pygame.mixer.music.play()
 # Игрок
 player: Optional[Player] = None
 
-player_group = pygame.sprite.Group()
 bullet_group = pygame.sprite.Group()
 
 
@@ -110,7 +108,8 @@ def load_level(filename: str):
 
 def generate_level(level_map):
     """ Генерация уровня """
-    global level_x, level_y
+    global level_x, level_y, player_group
+    player_group = pygame.sprite.Group()
     chunks = []
     player = Player((player_group,), PLAYER_IMAGE, 9, 12)
     level_x, level_y = 7, 3
@@ -158,12 +157,12 @@ def show_dashboard(ammo: int, coins: int) -> None:
     # Отрисовываем картинку для счётчика пуль
     virtual_surface.blit(AMMO_COUNTER_IMAGE, (10, 10))
     # Отрисовываем картинку для счётчика монет
-    virtual_surface.blit(COIN_COUNTER_IMAGE, (650, 10))
+    virtual_surface.blit(COIN_COUNTER_IMAGE, (600, 10))
     # Отрисовываем количество пуль у игрока
     print_text(str(ammo) if ammo else '-', 112 if ammo > 9 else 115, 30,
                "white", font_size=18)
     # Отрисовываем количество монет у игрока
-    print_text(str(coins), 700, 5, "gray30", font_size=40)
+    print_text(str(coins), 650, 10, "white", font_size=30)
 
 
 def pil_image_to_surface(pil_image: Image) -> pygame.Surface:
@@ -415,12 +414,6 @@ collide_side = ''
 # счетчик прыжка
 jump_counter = 0
 
-# Монетки игрока
-coins = cur.execute("SELECT Coins FROM Player_data").fetchone()[0]
-
-# Урон игрока
-player_damage = cur.execute("SELECT Damage FROM Player_data").fetchone()[0]
-
 # Нажата ли кнопка стрельбы
 button_pushed = False
 
@@ -642,17 +635,18 @@ def shift_characteristics_idx(direction):
 
 
 def upgrade(idx):
-    global improvement_scales, coins, buttons
+    global improvement_scales, buttons
     # проверка наличия нужной суммы монет для пользователя
-    if coins - improvement_scales[current_characteristics_target][2][idx][
+    if player.coins - improvement_scales[current_characteristics_target][
+        2][idx][
         improvement_scales[current_characteristics_target][0][idx][3]
     ] >= 0:
         # вычитание цены из общей суммы монет пользователя и обновление
         # баланса в БД
-        coins -= improvement_scales[current_characteristics_target][2][idx][
+        player.coins -= improvement_scales[current_characteristics_target][2][idx][
             improvement_scales[current_characteristics_target][0][idx][3]
         ]
-        cur.execute(f'UPDATE Player_data SET Coins = {coins}')
+        cur.execute(f'UPDATE Player_data SET Coins = {player.coins}')
         con.commit()
         # проверка на заполнение полоски до конца (всего 5 делений по 0.2)
         if improvement_scales[current_characteristics_target][0][idx][2] != 1:
@@ -717,7 +711,7 @@ def update_player_scales(characteristic: str, scale: str) -> None:
     :param scale: характеристика из категории
     """
 
-    global player, shot_delay, player_damage
+    global player, shot_delay
     if characteristic == 'ak-47':
         if scale == 'Ammo':
             player.ammo = cur.execute(
@@ -728,7 +722,7 @@ def update_player_scales(characteristic: str, scale: str) -> None:
                 'SELECT Shot_delay FROM Player_data'
             ).fetchone()[0]
         elif scale == 'Damage':
-            player_damage = cur.execute(
+            player.damage = cur.execute(
                 "SELECT Damage FROM Player_data"
             ).fetchone()[0]
     elif characteristic == 'player':
@@ -933,7 +927,8 @@ while running:
                     new_bul = Bullet(
                         bullet_group, BULLET_IMAGE, player.direction,
                         x,
-                        player.y + player.rect.h // 2 + 2
+                        player.y + player.rect.h // 2 + 2,
+                        damage=player.damage
                     )
                     shot_delay = 25
             else:
@@ -979,7 +974,8 @@ while running:
                     [ENEMY_DESTROY_SOUND, BOX_DESTROY_SOUND],
                     [HIT_SOUND, SHIELD_HIT_SOUND],
                     player_group, camera,
-                    virtual_surface, COINS_SHEETS, chunks
+                    virtual_surface, COINS_SHEETS, COIN_SELECTION_SOUND,
+                    chunks
                 )
             # Обновляем таймер щита игрока
             if player.shield_recharge:
@@ -1041,7 +1037,7 @@ while running:
                 camera.update(dx, 5)
             else:
                 on_ground = True
-            show_dashboard(player.ammo, coins)
+            show_dashboard(player.ammo, player.coins)
         else:
             virtual_surface.blit(blured_background_image, (0, 0))
             if current_menu == 1:
