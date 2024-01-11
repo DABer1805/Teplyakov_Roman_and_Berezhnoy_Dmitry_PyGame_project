@@ -6,16 +6,22 @@ from typing import Union, Optional
 
 import numpy as np
 import pygame
+import sqlite3
 import win32gui
 import win32ui
 from PIL import Image, ImageFilter
 from pygame import RESIZABLE, transform, VIDEORESIZE
+from pygame import Rect
 
 from constants import WIDTH, HEIGHT, FPS, STEP, DIRECTION_LEFT, \
     DIRECTION_RIGHT, BORDER_WIDTH, IMPROVEMENT_SCALE_WIDTH, BULLET_WIDTH
 
 from classes import Player, Enemy, Wall, Box, Camera, Bullet, Button, Ray, \
     PhantomTile, Chunk
+
+# Подключаемся к базе данных
+con = sqlite3.connect('DataBase.sqlite')
+cur = con.cursor()
 
 # Задаём параметры приложения
 pygame.init()
@@ -412,8 +418,12 @@ collide_side = ''
 # счетчик прыжка
 jump_counter = 0
 
-# Монетки игрока (надо с БД брать)
-coins = 5000
+# Монетки игрока
+coins = cur.execute("SELECT Coins FROM Player_data").fetchone()[0]
+
+# Урон игрока
+player_damage = cur.execute("SELECT Damage FROM Player_data").fetchone()[0]
+
 # Нажата ли кнопка стрельбы
 button_pushed = False
 
@@ -439,16 +449,16 @@ improvement_scales = {
                             settings[7]),
                 0, 0
             ] for settings in (
-            (337, 220, 0, 12, 337 + BORDER_WIDTH, 220 + BORDER_WIDTH, 0,
-             12 - BORDER_WIDTH * 2, 0),
-            (337, 269, 0, 12, 337 + BORDER_WIDTH, 269 + BORDER_WIDTH, 0,
-             12 - BORDER_WIDTH * 2, 0),
-            (337, 316, 0, 12, 337 + BORDER_WIDTH, 269 + BORDER_WIDTH, 0,
-             12 - BORDER_WIDTH * 2, 0)
-        )
+                (337, 220, 0, 12, 337 + BORDER_WIDTH, 220 + BORDER_WIDTH, 0,
+                 12 - BORDER_WIDTH * 2, 0),
+                (337, 269, 0, 12, 337 + BORDER_WIDTH, 269 + BORDER_WIDTH, 0,
+                 12 - BORDER_WIDTH * 2, 0),
+                (337, 316, 0, 12, 337 + BORDER_WIDTH, 269 + BORDER_WIDTH, 0,
+                 12 - BORDER_WIDTH * 2, 0)
+            )
         ], [False, False, False], [
             [10, 45, 100, 250, 500, 'max'],
-            [10, 45, 100, 250, 500, 'max'],
+            [10, 60, 150, 300, 600, 'max'],
             [10, 45, 100, 250, 500, 'max']
         ],
         [
@@ -466,11 +476,11 @@ improvement_scales = {
                             settings[7]),
                 0, 0
             ] for settings in (
-            (337, 220, 0, 12, 337 + BORDER_WIDTH, 220 + BORDER_WIDTH, 0,
-             12 - BORDER_WIDTH * 2, 0),
-            (337, 269, 0, 12, 337 + BORDER_WIDTH, 269 + 69 + BORDER_WIDTH, 0,
-             12 - BORDER_WIDTH * 2, 0)
-        )
+                (337, 220, 0, 12, 337 + BORDER_WIDTH, 220 + BORDER_WIDTH, 0,
+                 12 - BORDER_WIDTH * 2, 0),
+                (337, 269, 0, 12, 337 + BORDER_WIDTH, 269 + 69 + BORDER_WIDTH,
+                 0, 12 - BORDER_WIDTH * 2, 0)
+            )
         ], [False, False, True], [
             [10, 45, 100, 250, 500, 'max'],
             [10, 45, 100, 250, 500, 'max']
@@ -480,6 +490,12 @@ improvement_scales = {
             lambda: print('Улучшение щита')
         ]
     ]
+}
+
+# Значения для увеличения характеристик и имена колонок в БД
+improvement_values = {
+    'ak-47': (('Shot_delay', 3), ('Damage', 0.5), ('Ammo', 2)),
+    'player': (('HP', 1), ('Shields', 1))
 }
 
 blured_background_image = None
@@ -630,34 +646,103 @@ def shift_characteristics_idx(direction):
 
 def upgrade(idx):
     global improvement_scales, coins, buttons
+    # проверка наличия нужной суммы монет для пользователя
     if coins - improvement_scales[current_characteristics_target][2][idx][
         improvement_scales[current_characteristics_target][0][idx][3]
     ] >= 0:
+        # вычитание цены из общей суммы монет пользователя и обновление
+        # баланса в БД
         coins -= improvement_scales[current_characteristics_target][2][idx][
             improvement_scales[current_characteristics_target][0][idx][3]
         ]
+        cur.execute(f'UPDATE Player_data SET Coins = {coins}')
+        con.commit()
+        # проверка на заполнение полоски до конца (всего 5 делений по 0.2)
         if improvement_scales[current_characteristics_target][0][idx][2] != 1:
             UPGRADE_SOUND.play()
+            # запуск lambda функций
             improvement_scales[current_characteristics_target][3][idx]()
+            col = improvement_values[current_characteristics_target][idx][0]
+            value = improvement_values[current_characteristics_target][idx][1]
+            # Проверяем, что изменяемая характеристика не скорость стрельбы
+            if col != 'Shot_delay':
+                # Берем старое значение
+                old_value = cur.execute(
+                    f'SELECT {col} FROM Player_data'
+                ).fetchone()[0]
+                # Присваиваем новое
+                cur.execute(
+                    f"UPDATE Player_data SET {col} = {old_value + value}"
+                )
+                con.commit()
+            else:
+                # Для скорости стрельбы логика та же, но значение мы отнимаем
+                old_value = cur.execute(
+                    f'SELECT {col} FROM Player_data'
+                ).fetchone()[0]
+                cur.execute(
+                    f"UPDATE Player_data SET {col} = {old_value - value}"
+                )
+                con.commit()
+            # обновляем измененную величину
+            update_player_scales(current_characteristics_target, col)
+            # увеличение полоски
             improvement_scales[current_characteristics_target][0][idx][2] += \
                 0.2
+            # изменение цены для покупки
             improvement_scales[current_characteristics_target][0][idx][3] += 1
+            # увеличение длинны темного прямоугольника (за светлым)
             improvement_scales[current_characteristics_target][0][idx][
                 0].width = \
                 IMPROVEMENT_SCALE_WIDTH * improvement_scales[
                     current_characteristics_target
                 ][0][idx][2]
+            # увеличение светлой полоски
             improvement_scales[current_characteristics_target][0][idx][
                 1].width = \
                 IMPROVEMENT_SCALE_WIDTH * \
                 improvement_scales[
                     current_characteristics_target
                 ][0][idx][2] - BORDER_WIDTH * 2
-            if improvement_scales[current_characteristics_target][0][idx][
-                2] == 1:
+            # если полоска дошла до конца, то обозначается полная прокачка
+            # характеристики и кнопка становится невидима
+            if improvement_scales[current_characteristics_target][0][idx][2] \
+                    == 1:
                 improvement_scales[current_characteristics_target][1][
                     idx] = True
                 buttons[-(3 - idx)].is_visible = False
+
+
+def update_player_scales(characteristic: str, scale: str) -> None:
+    """
+    Функция для обновления переменных после изменения характеристик в БД
+    :param characteristic: категория характеристики (ak-47 | player)
+    :param scale: характеристика из категории
+    """
+
+    global player, shot_delay, player_damage
+    if characteristic == 'ak-47':
+        if scale == 'Ammo':
+            player.ammo = cur.execute(
+                'SELECT Ammo FROM Player_data'
+            ).fetchone()[0]
+        elif scale == 'Shot_delay':
+            shot_delay = cur.execute(
+                'SELECT Shot_delay FROM Player_data'
+            ).fetchone()[0]
+        elif scale == 'Damage':
+            player_damage = cur.execute(
+                "SELECT Damage FROM Player_data"
+            ).fetchone()[0]
+    elif characteristic == 'player':
+        if scale == 'HP':
+            player.hp = cur.execute(
+                "SELECT HP FROM Player_data"
+            ).fetchone()[0]
+        elif scale == 'Shields':
+            player.shield = cur.execute(
+                'SELECT Shields FROM Player_data'
+            ).fetchone()[0]
 
 
 def continue_game():
@@ -860,7 +945,9 @@ while running:
             if player.recharge_timer:
                 player.recharge_timer -= 1
                 if player.recharge_timer == 0:
-                    player.ammo = 5
+                    player.ammo = cur.execute(
+                        "SELECT Ammo FROM Player_data"
+                    ).fetchone()[0]
             elif not player.ammo:
                 RECHARGE_SOUND.play()
                 player.recharge_timer = 120
@@ -999,3 +1086,4 @@ while running:
         frame = 0
 
 terminate()
+con.close()

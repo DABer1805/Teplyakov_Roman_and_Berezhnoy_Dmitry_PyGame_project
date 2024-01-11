@@ -1,6 +1,7 @@
 from random import randrange
 
 import pygame
+import sqlite3
 
 from constants import TILE_WIDTH, TILE_HEIGHT, WIDTH, HEIGHT, \
     DIRECTION_RIGHT, BULLET_SPEED, DIRECTION_LEFT, BULLET_WIDTH
@@ -372,16 +373,28 @@ class Player(Entity):
         :param player_group: Групп, куда будет добавлен игрок
         :param all_sprites: Все спрайты
         :param player_image: Изображение игрока
-        :param hp: HP игрока
         :param pos_x: позиция по оси x
         :param pos_y: позиция по оси y
         """
         super().__init__(sprite_groups, player_image,
                          pos_x, pos_y)
+
+        # Подключаемся к базе данных
+        self.con = sqlite3.connect('DataBase.sqlite')
+        self.cur = self.con.cursor()
+
         # HP игрока
-        self.hp = hp
+        self.hp = self.cur.execute('SELECT HP FROM Player_data').fetchone()[0]
+        # Щит игрока
+        self.shield = self.cur.execute(
+            'SELECT Shields FROM Player_data'
+        ).fetchone()[0]
+        # Таймер перезарядки щита
+        self.shield_recharge = 0
         # Сколько патронов в обойме
-        self.ammo = 5
+        self.ammo = self.cur.execute(
+            'SELECT Ammo FROM Player_data'
+        ).fetchone()[0]
         # Таймер перезарядки
         self.recharge_timer = 0
         # Направление, куда игрок смотрит
@@ -617,6 +630,27 @@ class Bullet(pygame.sprite.Sprite):
                 not pygame.sprite.spritecollideany(self, player_group):
             hit_sounds[0].play()
             self.kill()
+        # Пробегаемся по переданным группам НЕ РАЗРУШАЕМЫХ спрайтов,
+        # в которых будет проверяться столкновение
+        for indestructible_group in indestructible_groups:
+            # Если снаряд столкнулся с каким-то из спрайтов и этот спрайт не
+            # игрок, то удаляем снаряд
+            if pygame.sprite.spritecollideany(self, indestructible_group) and \
+                    not pygame.sprite.spritecollideany(self, player_group):
+                hit_sounds[1].play()
+                self.kill()
+
+        # Если пуля вражеская, то проверяем пересечение со спрайтом игрока и
+        # отнимаем либо щит, либо хп
+        if self.is_enemy_bullet:
+            if pygame.sprite.spritecollideany(self, player_group):
+                for player in player_group:
+                    if player.shield:
+                        player.shield -= 1
+                        player.shield_recharge = 300
+                    else:
+                        player.hp -= 1
+                self.kill()
 
         screen.blit(self.image, (self.rect.x, self.rect.y))
 
