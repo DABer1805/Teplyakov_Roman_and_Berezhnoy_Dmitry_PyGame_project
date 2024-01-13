@@ -4,7 +4,10 @@ import pygame
 import sqlite3
 
 from constants import TILE_WIDTH, TILE_HEIGHT, WIDTH, HEIGHT, \
-    DIRECTION_RIGHT, BULLET_SPEED, DIRECTION_LEFT, BULLET_WIDTH
+    DIRECTION_RIGHT, BULLET_SPEED, DIRECTION_LEFT, BULLET_WIDTH, \
+    HEALTH_SCALE_WIDTH, HEALTH_SCALE_HEIGTH, HEALTH_SCALE_BORDER, \
+    KEY_OBJECT_HEALTH_SCALE_WIDTH, KEY_OBJECT_HEALTH_SCALE_HEIGTH, \
+    KEY_OBJECT_HEALTH_SCALE_BORDER
 
 from functools import partial
 from typing import Literal
@@ -96,8 +99,7 @@ class Wall(Tile):
 
     def __init__(self, tiles_group: pygame.sprite.Group,
                  all_sprites: pygame.sprite.Group,
-                 image,
-                 pos_x: int, pos_y: int, chunk_number) -> None:
+                 image, pos_x: int, pos_y: int, chunk_number) -> None:
         """
         :param tiles_group: Группа, в которую будет добавлен текущий блок
         :param all_sprites: Все спрайты
@@ -115,7 +117,8 @@ class Box(Tile):
 
     def __init__(self, tiles_group: pygame.sprite.Group,
                  all_sprites: pygame.sprite.Group,
-                 image, pos_x: int, pos_y: int, chunk_number) -> None:
+                 image, pos_x: int, pos_y: int, chunk_number,
+                 max_hp=5, is_key_object=False) -> None:
         """
         :param tiles_group: Группа, в которую будет добавлен текущий блок
         :param all_sprites: Все спрайты
@@ -126,8 +129,10 @@ class Box(Tile):
         super().__init__(tiles_group, all_sprites, image, pos_x, pos_y,
                          chunk_number)
         # Прочность блока
+        self.is_key_object = is_key_object
         self.type = 4
-        self.hp = 5
+        self.max_hp = max_hp
+        self.hp = self.max_hp
         self.y += 1
 
     def pin_to_ground(self, sprite_group):
@@ -140,6 +145,20 @@ class Box(Tile):
         else:
             self.y += 5
             self.rect.y += 5
+
+    def draw_health_scale(self, screen, x, y):
+        pygame.draw.rect(screen, '#2b2b2b', pygame.Rect(
+            x, y, KEY_OBJECT_HEALTH_SCALE_WIDTH,
+            KEY_OBJECT_HEALTH_SCALE_HEIGTH
+        ))
+        pygame.draw.rect(screen, '#cb7043', pygame.Rect(
+            x + KEY_OBJECT_HEALTH_SCALE_BORDER,
+            y + KEY_OBJECT_HEALTH_SCALE_BORDER,
+            (KEY_OBJECT_HEALTH_SCALE_WIDTH -
+             KEY_OBJECT_HEALTH_SCALE_BORDER * 2) * (self.hp / self.max_hp),
+            KEY_OBJECT_HEALTH_SCALE_HEIGTH -
+            KEY_OBJECT_HEALTH_SCALE_BORDER * 2
+        ))
 
 
 class Chunk:
@@ -159,72 +178,79 @@ class Chunk:
         self.enemies_group = pygame.sprite.Group()
         for y, row in enumerate(chunk_map):
             for x, elem in enumerate(row[0]):
+                if elem == 'а':
+                    print('а')
                 # Тут те тайлы, котрые не рушатся, создаётся соответствующий
                 # спрайт и добавляется в группу
                 if elem in ('w', 's', 'l', 'd', 'L', '^', 'D'):
                     Wall(
                         self.bricks_group, self.all_sprites,
                         tile_images[elem], x + self.x * 8, y + self.y * 8,
-                                           self.x + self.y * 8 - 1
+                                           self.x + self.y * 7,
                     )
                 elif elem in ('#', '_', '-', '*', '/', '0', '1', '2', '3',
-                              '4', '5', '6', '6', '7', '8', '9'):
+                              '4', '5', '6', '6', '7', '8', '9', 'r',
+                              'а', 'б', 'в', 'г', 'д', 'е', 'ё', 'ж', 'з',
+                              'и', 'й', 'к', 'л', 'м', 'н', 'о', 'п', 'р',
+                              'с', 'т', 'у', 'ф', 'х', 'ц', 'ч', 'ш', 'щ'):
                     PhantomTile(
                         self.phantom_group, self.all_sprites,
                         tile_images[elem], x + self.x * 8, y + self.y * 8,
-                                           self.x + self.y * 8 - 1
+                                           self.x + self.y * 7
                     )
-                elif elem in ('b', 'B'):
+                elif elem in ('b', 'B', '!'):
                     Box(
                         self.boxes_group, self.all_sprites,
                         tile_images[elem], x + self.x * 8, y + self.y * 8,
-                                           self.x + self.y * 8 - 1
+                                           self.x + self.y * 7,
+                        max_hp=10 if elem == '!' else 5,
+                        is_key_object=elem == '!'
                     )
                 elif elem == 'o':
                     Enemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[0], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * 8 - 1,
+                                         self.x + self.y * 7,
                         is_static=True
                     )
                 elif elem == 'O':
                     Enemy([self.enemies_group, self.all_sprites],
                           enemy_images[0], x + self.x * 8, y + self.y * 8,
-                          self.x + self.y * 8 - 1)
+                          self.x + self.y * 7)
                 elif elem == 'h':
                     HeavyEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[1], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * 8 - 1,
+                                         self.x + self.y * 7,
                         is_static=True
                     )
                 elif elem == 'H':
                     HeavyEnemy([self.enemies_group, self.all_sprites],
                                enemy_images[1], x + self.x * 8,
-                               y + self.y * 8, self.x + self.y * 8 - 1)
+                               y + self.y * 8, self.x + self.y * 7)
                 elif elem == 'a':
                     ArmoredEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[2], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * 8 - 1,
+                                         self.x + self.y * 7,
                         is_static=True
                     )
                 elif elem == 'A':
                     ArmoredEnemy([self.enemies_group, self.all_sprites],
                                  enemy_images[2], x + self.x * 8,
-                                 y + self.y * 8, self.x + self.y * 8 - 1)
+                                 y + self.y * 8, self.x + self.y * 7)
                 elif elem == 'm':
                     MarksmanEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[3], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * 8 - 1,
+                                         self.x + self.y * 7,
                         is_static=True
                     )
                 elif elem == 'M':
                     MarksmanEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[3], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * 8 - 1
+                                         self.x + self.y * 7
                     )
 
     def render(self, screen, camera, player_group, shot_sounds,
@@ -291,6 +317,12 @@ class Chunk:
         target_group.add(self.bricks_group)
         for box in self.boxes_group:
             box.pin_to_ground(target_group)
+            if box.is_key_object:
+                box.draw_health_scale(
+                    screen, box.rect.x - 25, box.rect.y - 20
+                )
+        self.boxes_group.draw(screen)
+
         for enemy in self.enemies_group:
             enemy.check_collision_sides(all_blocks_group)
             if not enemy.collide_list[7]:
@@ -302,8 +334,13 @@ class Chunk:
                     dx = 0
                 enemy.x += dx
                 enemy.y += 5
+            enemy.draw_health_scale(
+                screen, enemy.rect.x + (
+                    10 if enemy.direction == DIRECTION_LEFT else -10
+                ),
+                        enemy.rect.y - 10
+            )
 
-        self.boxes_group.draw(screen)
         for coin in self.coins_group:
             player = pygame.sprite.spritecollide(coin, player_group, False)
             if pygame.sprite.spritecollideany(coin, player_group):
@@ -350,7 +387,8 @@ class Entity(pygame.sprite.Sprite):
 
     def __init__(self, sprite_groups,
                  entity_image: pygame.Surface,
-                 pos_x: int, pos_y: int) -> None:
+                 pos_x: int, pos_y: int, max_hp=1,
+                 is_key_object=False) -> None:
         """
         :param entity_group: Группа, куда будет добавлена сущность
         :param entity_image: Изображение сущности
@@ -358,8 +396,11 @@ class Entity(pygame.sprite.Sprite):
         :param pos_y: позиция по оси y
         """
         super().__init__(*sprite_groups)
+        self.is_key_object = is_key_object
         self.grid_x = pos_x
         self.grid_y = pos_y
+        self.max_hp = max_hp
+        self.hp = max_hp
         self.x = self.grid_x * TILE_WIDTH + 24
         self.y = self.grid_y * TILE_HEIGHT + 2
         self.collide_list = [False for _ in range(8)]
@@ -413,6 +454,17 @@ class Entity(pygame.sprite.Sprite):
                     self.rect.midbottom
                 )
 
+    def draw_health_scale(self, screen, x, y):
+        pygame.draw.rect(screen, '#2b2b2b', pygame.Rect(
+            x, y, HEALTH_SCALE_WIDTH, HEALTH_SCALE_HEIGTH
+        ))
+        pygame.draw.rect(screen, '#cd3030', pygame.Rect(
+            x + HEALTH_SCALE_BORDER, y + HEALTH_SCALE_BORDER,
+            (HEALTH_SCALE_WIDTH - HEALTH_SCALE_BORDER * 2) *
+            (self.hp / self.max_hp),
+            HEALTH_SCALE_HEIGTH - HEALTH_SCALE_BORDER * 2
+        ))
+
 
 class Player(Entity):
     """ Игрок """
@@ -451,11 +503,15 @@ class Player(Entity):
         # Таймер перезарядки щита
         self.shield_recharge = 0
         # Сколько патронов в обойме
-        self.ammo = self.cur.execute(
+        self.clip_size = self.cur.execute(
             'SELECT Ammo FROM Player_data'
         ).fetchone()[0]
+        self.ammo = self.clip_size
         # Скорость стерльбы
-        self.shot_delay = 0
+        self.shot_delay = self.cur.execute(
+            'SELECT Shot_delay FROM Player_data'
+        ).fetchone()[0]
+        self.timer = 0
         # Таймер перезарядки
         self.recharge_timer = 0
         # Направление, куда игрок смотрит
@@ -493,7 +549,8 @@ class Enemy(Entity):
         self.type = 0
         self.x -= 24
         # HP врага
-        self.hp = 5
+        self.max_hp = 5
+        self.hp = self.max_hp
         self.is_static = is_static
         # Пройденный промежуток px
         self.distance = 0
@@ -575,7 +632,8 @@ class HeavyEnemy(Enemy):
         super().__init__(sprite_groups, enemy_image, pos_x, pos_y,
                          chunk_number, is_static, max_distance, direction)
         self.type = 1
-        self.hp = 30
+        self.max_hp = 20
+        self.hp = self.max_hp
         self.damage = 1
         self.clip_size = 10
         self.ammo = self.clip_size
@@ -592,7 +650,8 @@ class ArmoredEnemy(Enemy):
         super().__init__(sprite_groups, enemy_image, pos_x, pos_y,
                          chunk_number, is_static, max_distance, direction)
         self.type = 2
-        self.hp = 7
+        self.max_hp = 7
+        self.hp = self.max_hp
         self.clip_size = 2
         self.ammo = self.clip_size
         self.shot_delay = 35
@@ -608,7 +667,8 @@ class MarksmanEnemy(Enemy):
         super().__init__(sprite_groups, enemy_image, pos_x, pos_y,
                          chunk_number, is_static, max_distance, direction)
         self.type = 3
-        self.hp = 7
+        self.max_hp = 7
+        self.hp = self.max_hp
         self.clip_size = 1
         self.ammo = self.clip_size
         self.shot_delay = 160
@@ -679,7 +739,7 @@ class Bullet(pygame.sprite.Sprite):
                             self.direction:
                         hit_sounds[1].play()
                         self.kill()
-                        return
+                        return False
                 destructible_sprites_hit_list[0].hp -= 1
                 if destructible_sprites_hit_list[0].hp <= 0:
                     sprite_type = destructible_sprites_hit_list[0].type
@@ -705,6 +765,8 @@ class Bullet(pygame.sprite.Sprite):
                             chunks[destructible_sprites_hit_list[
                                 0].chunk_number].all_sprites
                         )
+                    if destructible_sprites_hit_list[0].is_key_object:
+                        return True
                     destructible_sprites_hit_list[0].kill()
             if destructible_sprites_hit_list[0].type in (4,) or \
                     not self.is_enemy_bullet:
@@ -737,6 +799,7 @@ class Bullet(pygame.sprite.Sprite):
                 self.kill()
 
         screen.blit(self.image, (self.rect.x, self.rect.y))
+        return False
 
 
 class Button:
@@ -823,28 +886,36 @@ class ImprovementScales:
 
         for index in range(len(self.scale_objects)):
             self.upgrade_buttons.append(Button(
-                21, 21, 472, 415 + index * 48,
+                21, 21, 472, 215 + index * 48,
                 active_upgrade_button_image,
                 inactive_upgrade_button_image,
                 f'upgrade_button{index + 1}', partial(
                     self.upgrade, index, player, cur, con, upgrade_sound
                 )
             ))
+            if scale_objects[index].current_cost == 'max':
+                self.upgrade_buttons[index].is_visible = False
 
     def upgrade(self, index, player, cur, con, upgrade_sound):
         sign = 1
         # проверка наличия нужной суммы монет для пользователя
-        if player.coins - self.scale_objects[index].current_cost >= 0:
+        if player.coins - int(self.scale_objects[index].current_cost) >= 0:
             # вычитание цены из общей суммы монет пользователя и обновление
             # баланса в БД
-            player.coins -= self.scale_objects[index].current_cost
+            player.coins -= int(self.scale_objects[index].current_cost)
             cur.execute(f'UPDATE Player_data SET Coins = {player.coins}')
             con.commit()
             # проверка на заполнение полоски до конца (всего 5 делений по 0.2)
             if self.scale_objects[index].current_cost != 'max':
                 upgrade_sound.play()
+                self.scale_objects[index].stage += 1
+                cur.execute(
+                    f'UPDATE Scales '
+                    f'SET {self.scale_objects[index].scale_name} = '
+                    f'{self.scale_objects[index].stage}'
+                )
                 # изменение характеристики
-                if self.scale_objects[index].scale_name != 'Shot_delay':
+                if self.scale_objects[index].scale_name == 'Shot_delay':
                     sign = -1
 
                 # Берем старое значение
@@ -892,9 +963,10 @@ class ImprovementScales:
         :param player: объект класса Player
         """
         if scale == 'Ammo':
-            player.ammo = cur.execute(
+            player.clip_size = cur.execute(
                 'SELECT Ammo FROM Player_data'
             ).fetchone()[0]
+            player.ammo = player.clip_size
         elif scale == 'Shot_delay':
             player.shot_delay = cur.execute(
                 'SELECT Shot_delay FROM Player_data'
@@ -928,7 +1000,8 @@ class ImprovementScale:
         )
         self.internal_rect = pygame.Rect(
             pos_x + border_width, pos_y + border_width,
-            width * 0.2 * self.stage, height - (border_width * 2)
+            width * 0.2 * self.stage - (border_width * 2),
+            height - (border_width * 2)
         )
 
         self.current_cost = cur.execute(
