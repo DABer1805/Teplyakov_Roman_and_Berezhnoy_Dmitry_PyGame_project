@@ -11,17 +11,12 @@ import win32gui
 import win32ui
 from PIL import Image, ImageFilter
 from pygame import RESIZABLE, transform, VIDEORESIZE
-from pygame import Rect
 
 from constants import WIDTH, HEIGHT, FPS, STEP, DIRECTION_LEFT, \
     DIRECTION_RIGHT, BORDER_WIDTH, IMPROVEMENT_SCALE_WIDTH, BULLET_WIDTH
 
 from classes import Player, Camera, Bullet, Button, Chunk, ImprovementScales, \
     ImprovementScale
-
-# Подключаемся к базе данных
-con = sqlite3.connect('DataBase.sqlite')
-cur = con.cursor()
 
 # Задаём параметры приложения
 pygame.init()
@@ -95,7 +90,7 @@ def load_level(filename: str):
     # Путь к файлу
     fullname = os.path.join('data', filename)
     # Читаем уровень, убирая символы перевода строки
-    with open(fullname, 'r') as mapFile:
+    with open(fullname, 'r', encoding='utf8') as mapFile:
         level_map = [line.strip() for line in mapFile]
 
     # И подсчитываем максимальную длину
@@ -113,7 +108,7 @@ def generate_level(level_map):
     player_group = pygame.sprite.Group()
     chunks = []
     player = Player((player_group,), PLAYER_IMAGE, 9, 12)
-    level_x, level_y = 7, 3
+    level_x, level_y = 13, 7
     for y1 in range(level_y):
         for x1 in range(level_x):
             chunks.append(Chunk(
@@ -145,7 +140,8 @@ def print_text(text: str, pos_x: int, pos_y: int,
     # Выбранный шрифт
     font = pygame.font.SysFont(font_name, font_size)
     # Отрисовываем на экране выбранный текст
-    virtual_surface.blit(font.render(text, True, font_color), (pos_x, pos_y),)
+    virtual_surface.blit(font.render(text, True, font_color),
+                         (pos_x, pos_y), )
 
 
 def show_dashboard(ammo: int, coins: int) -> None:
@@ -325,6 +321,34 @@ TILE_IMAGES = {
     '7': load_image('elevator_background_image_3.png'),
     '8': load_image('elevator_background_image_4.png'),
     '9': load_image('elevator_background_image_5.png'),
+    'r': load_image('reactor_background_image_1.png'),
+    'а': load_image('corridor_background_image_1.png'),
+    'б': load_image('corridor_background_image_2.png'),
+    'в': load_image('corridor_background_image_3.png'),
+    'г': load_image('corridor_background_image_4.png'),
+    'д': load_image('corridor_background_image_5.png'),
+    'е': load_image('corridor_background_image_6.png'),
+    'ё': load_image('corridor_background_image_7.png'),
+    'ж': load_image('corridor_background_image_8.png'),
+    'з': load_image('corridor_background_image_9.png'),
+    'и': load_image('corridor_background_image_10.png'),
+    'й': load_image('storage_background_image_1.png'),
+    'к': load_image('storage_background_image_2.png'),
+    'л': load_image('storage_background_image_3.png'),
+    'м': load_image('storage_background_image_4.png'),
+    'н': load_image('storage_background_image_5.png'),
+    'о': load_image('storage_background_image_6.png'),
+    'п': load_image('storage_background_image_7.png'),
+    'р': load_image('storage_background_image_8.png'),
+    'с': load_image('storage_background_image_9.png'),
+    'т': load_image('storage_background_image_10.png'),
+    'у': load_image('water_treatment_plant_background_image_1.png'),
+    'ф': load_image('water_treatment_plant_background_image_2.png'),
+    'х': load_image('water_treatment_plant_background_image_3.png'),
+    'ц': load_image('water_treatment_plant_background_image_4.png'),
+    'ч': load_image('water_treatment_plant_background_image_5.png'),
+    'ш': load_image('water_treatment_plant_background_image_6.png'),
+    'щ': load_image('water_treatment_plant_background_image_7.png'),
 }
 
 # ===== Изображения =====
@@ -332,6 +356,10 @@ TILE_IMAGES = {
 MAIN_MENU_IMAGE = load_image('main_menu_image.png')
 # Задний фон для экрана с выбором уровня
 SELECT_LEVEL_MENU_IMAGE = load_image('select_level_menu_image.png')
+# Фон экрана смерти игрока
+ENDGAME_MENU_IMAGE = load_image('player_dead_image.png')
+# Фон экрана для прохождения уровня
+VICTORY_MENU_IMAGE = load_image('player_victory_image.png')
 # Изображение игрока
 PLAYER_IMAGE = load_image('artur.png')
 # Изображение пули
@@ -363,7 +391,8 @@ MARKSMAN_ENEMY_SHOT_SOUND = pygame.mixer.Sound(
 RECHARGE_SOUND = pygame.mixer.Sound("data/sounds/recharge_sound.wav")
 # Звук разрушения коробки
 BOX_DESTROY_SOUND = pygame.mixer.Sound("data/sounds/box_destroy_sound.wav")
-ENEMY_DESTROY_SOUND = pygame.mixer.Sound("data/sounds/enemy_destroy_sound.wav")
+ENEMY_DESTROY_SOUND = pygame.mixer.Sound(
+    "data/sounds/enemy_destroy_sound.wav")
 # Звук попадания в препятствие
 HIT_SOUND = pygame.mixer.Sound("data/sounds/hit_sound.wav")
 SHIELD_HIT_SOUND = pygame.mixer.Sound("data/sounds/shield_hit_sound.wav")
@@ -377,8 +406,8 @@ CHARACTERISTICS_BACKGROUND = load_image(
 )
 # Листы со спрайтами медной монетки
 COINS_SHEETS = [load_image('copper_coins_sheet8x1.png'),
-               load_image('silver_coins_sheet8x1.png'),
-               load_image('golden_coins_sheet8x1.png'),]
+                load_image('silver_coins_sheet8x1.png'),
+                load_image('golden_coins_sheet8x1.png'), ]
 # Счетчик снарядов в обойме
 AMMO_COUNTER_IMAGE = load_image('ammo_counter.png')
 # Счетчик монеток
@@ -427,25 +456,6 @@ pause = False
 # Текущий экран
 current_menu = 0
 
-improvement_scales = {
-    'ak-47': ImprovementScales(
-        [
-            ImprovementScale(337, 220, 0, 12, BORDER_WIDTH, 'Shot_delay', cur),
-            ImprovementScale(337, 269, 0, 12, BORDER_WIDTH, 'Damage', cur),
-            ImprovementScale(337, 316, 0, 12, BORDER_WIDTH, 'Ammo', cur)
-        ],
-        ACTIVE_UPGRADE_BUTTON_IMAGE, INACTIVE_UPGRADE_BUTTON_IMAGE,
-        player, cur, con, UPGRADE_SOUND
-    ),
-    'player': ImprovementScales(
-        [
-            ImprovementScale(337, 220, 0, 12, BORDER_WIDTH, 'HP', cur),
-            ImprovementScale(337, 269, 0, 12, BORDER_WIDTH, 'Shields', cur)
-        ], ACTIVE_UPGRADE_BUTTON_IMAGE, INACTIVE_UPGRADE_BUTTON_IMAGE,
-        player, cur, con, UPGRADE_SOUND
-    )
-}
-
 blured_background_image = None
 
 current_characteristics_target = 'ak-47'
@@ -471,9 +481,34 @@ def start_game():
     buttons.clear()
 
 
+def open_endgame_menu():
+    global start, current_menu
+    buttons.append(Button(
+        152, 38, 324, 270,
+        ACTIVE_RETURN_BUTTON_IMAGE,
+        INACTIVE_RETURN_BUTTON_IMAGE,
+        'return_button', select_level
+    ))
+    current_menu = 4
+    start = False
+
+
+def open_victory_menu():
+    global start, current_menu
+    buttons.append(Button(
+        152, 38, 324, 270,
+        ACTIVE_RETURN_BUTTON_IMAGE,
+        INACTIVE_RETURN_BUTTON_IMAGE,
+        'return_button', select_level
+    ))
+    current_menu = 5
+    start = False
+
+
 def return_to_pause_menu():
     global current_menu, pause
     del buttons[-3:]
+    con.close()
     buttons.append(Button(
         152, 38, WIDTH // 2 - 78, HEIGHT // 2 - 32,
         ACTIVE_CONTINUE_BUTTON_IMAGE,
@@ -535,8 +570,40 @@ def return_to_main_menu():
 
 
 def open_characteristics_menu():
-    global buttons, current_menu
+    global buttons, current_menu, improvement_scales, con
     del buttons[-3:]
+    con = sqlite3.connect('DataBase.sqlite')
+    cur = con.cursor()
+    cur.execute(
+        f'UPDATE Player_data '
+        f'SET Coins = {player.coins}'
+    )
+    improvement_scales = {
+        'ak-47': ImprovementScales(
+            [
+                ImprovementScale(337, 220, IMPROVEMENT_SCALE_WIDTH,
+                                 12, BORDER_WIDTH, 'Shot_delay',
+                                 cur),
+                ImprovementScale(337, 269, IMPROVEMENT_SCALE_WIDTH,
+                                 12, BORDER_WIDTH, 'Damage',
+                                 cur),
+                ImprovementScale(337, 316, IMPROVEMENT_SCALE_WIDTH,
+                                 12, BORDER_WIDTH, 'Ammo', cur)
+            ],
+            ACTIVE_UPGRADE_BUTTON_IMAGE, INACTIVE_UPGRADE_BUTTON_IMAGE,
+            player, cur, con, UPGRADE_SOUND
+        ),
+        'player': ImprovementScales(
+            [
+                ImprovementScale(337, 220, IMPROVEMENT_SCALE_WIDTH,
+                                 12, BORDER_WIDTH, 'HP', cur),
+                ImprovementScale(337, 269, IMPROVEMENT_SCALE_WIDTH,
+                                 12, BORDER_WIDTH, 'Shields',
+                                 cur)
+            ], ACTIVE_UPGRADE_BUTTON_IMAGE, INACTIVE_UPGRADE_BUTTON_IMAGE,
+            player, cur, con, UPGRADE_SOUND
+        )
+    }
     current_menu = 1
     buttons.append(Button(
         21, 21, 267, 97,
@@ -576,11 +643,8 @@ def shift_characteristics_idx(direction):
         current_characteristics_target_idx
     ]
     for index, button in enumerate(improvement_scales[
-        current_characteristics_target
-    ].upgrade_buttons):
-        print(improvement_scales[
-            current_characteristics_target
-        ].scale_objects[index].current_cost)
+                                       current_characteristics_target
+                                   ].upgrade_buttons):
         if improvement_scales[
             current_characteristics_target
         ].scale_objects[index].current_cost != 'max':
@@ -633,8 +697,18 @@ def chunks_on_screen():
 
 
 def select_level():
-    global current_menu, buttons, pause, start
+    global current_menu, buttons, pause, start, player
     pause, start = False, False
+    if player is not None:
+        # Подключаемся к базе данных
+        con = sqlite3.connect('DataBase.sqlite')
+        cur = con.cursor()
+        cur.execute(
+            f'UPDATE Player_data '
+            f'SET Coins = {player.coins}'
+        )
+        con.commit()
+        con.close()
     buttons.clear()
     buttons.append(
         Button(
@@ -757,7 +831,7 @@ while running:
             if event.button == 1:
                 button_pushed = True
             elif event.button == 3:
-                if player.ammo != 5:
+                if player.ammo != player.clip_size:
                     player.ammo = 0
                     RECHARGE_SOUND.play()
                     player.recharge_timer = 120
@@ -766,7 +840,7 @@ while running:
                 button_pushed = False
     if start:
         if not pause:
-            if not player.shot_delay:
+            if not player.timer:
                 if button_pushed and player.ammo:
                     player.ammo -= 1
                     if player.direction == DIRECTION_LEFT:
@@ -781,16 +855,14 @@ while running:
                         player.y + player.rect.h // 2 + 2,
                         damage=player.damage
                     )
-                    player.shot_delay = 25
+                    player.timer = player.shot_delay
             else:
-                player.shot_delay -= 1
+                player.timer -= 1
 
             if player.recharge_timer:
                 player.recharge_timer -= 1
                 if player.recharge_timer == 0:
-                    player.ammo = cur.execute(
-                        "SELECT Ammo FROM Player_data"
-                    ).fetchone()[0]
+                    player.ammo = player.clip_size
             elif not player.ammo:
                 RECHARGE_SOUND.play()
                 player.recharge_timer = 120
@@ -819,15 +891,16 @@ while running:
                 )
 
             for bullet in bullet_group:
-                bullet.update(
-                    destructible_groups,
-                    indestructible_groups,
-                    [ENEMY_DESTROY_SOUND, BOX_DESTROY_SOUND],
-                    [HIT_SOUND, SHIELD_HIT_SOUND],
-                    player_group, camera,
-                    virtual_surface, COINS_SHEETS, COIN_SELECTION_SOUND,
-                    chunks
-                )
+                if bullet.update(
+                        destructible_groups,
+                        indestructible_groups,
+                        [ENEMY_DESTROY_SOUND, BOX_DESTROY_SOUND],
+                        [HIT_SOUND, SHIELD_HIT_SOUND],
+                        player_group, camera,
+                        virtual_surface, COINS_SHEETS, COIN_SELECTION_SOUND,
+                        chunks
+                ):
+                    open_victory_menu()
             # Обновляем таймер щита игрока
             if player.shield_recharge:
                 player.shield_recharge -= 1
@@ -837,8 +910,8 @@ while running:
                         player.shield_recharge = 300
             # Проверяем хп игрока
             for player in player_group:
-                if player.hp == 0:
-                    print("ПОМЕР")
+                if player.hp <= 0:
+                    open_endgame_menu()
 
             player_group.draw(virtual_surface)
 
@@ -894,8 +967,8 @@ while running:
             if current_menu == 1:
                 virtual_surface.blit(CHARACTERISTICS_BACKGROUND, (0, 0))
                 virtual_surface.blit(CHARACTERISTICS_IMAGES[
-                                current_characteristics_target_idx
-                            ], (300, 91))
+                                         current_characteristics_target_idx
+                                     ], (300, 91))
                 for index, improvement_scale in enumerate(
                         improvement_scales[
                             current_characteristics_target
@@ -926,6 +999,10 @@ while running:
             virtual_surface.blit(MAIN_MENU_IMAGE, (0, 0))
         elif current_menu == 3:
             virtual_surface.blit(SELECT_LEVEL_MENU_IMAGE, (0, 0))
+        elif current_menu == 4:
+            virtual_surface.blit(ENDGAME_MENU_IMAGE, (0, 0))
+        elif current_menu == 5:
+            virtual_surface.blit(VICTORY_MENU_IMAGE, (0, 0))
 
     for button in buttons:
         cur_idx = button.draw(virtual_surface)
@@ -951,4 +1028,3 @@ while running:
         frame = 0
 
 terminate()
-con.close()

@@ -22,3 +22,15 @@ DIRECTION_RIGHT = 1
 BORDER_WIDTH = 2
 # Длина шкалы характеристики
 IMPROVEMENT_SCALE_WIDTH = 123
+# Длина шкалы HP у сущностей
+HEALTH_SCALE_WIDTH = 50
+# Высота шкалы HP у сущностей
+HEALTH_SCALE_HEIGTH = 8
+# Толщина рамки у шкалы HP у сущностей
+HEALTH_SCALE_BORDER = 2
+# Длина шкалы HP у сущностей
+KEY_OBJECT_HEALTH_SCALE_WIDTH = 150
+# Высота шкалы HP у сущностей
+KEY_OBJECT_HEALTH_SCALE_HEIGTH = 16
+# Толщина рамки у шкалы HP у сущностей
+KEY_OBJECT_HEALTH_SCALE_BORDER = 3
