@@ -34,3 +34,28 @@ KEY_OBJECT_HEALTH_SCALE_WIDTH = 150
 KEY_OBJECT_HEALTH_SCALE_HEIGTH = 16
 # Толщина рамки у шкалы HP у сущностей
 KEY_OBJECT_HEALTH_SCALE_BORDER = 3
+# Длина шкалы перезарядки
+RECHARGE_SCALE_WIDTH = 100
+# Длина шкалы перезарядки
+RECHARGE_SCALE_HEIGTH = 19
+# Толщина рамки
+RECHARGE_SCALE_BORDER = 3
+# Длина шкалы HP у игрока
+PLAYER_HEALTH_SCALE_WIDTH = 160
+# Высота шкалы HP у игрока
+PLAYER_HEALTH_SCALE_HEIGTH = 19
+# Толщина рамки у шкалы HP у игрока
+PLAYER_HEALTH_SCALE_BORDER = 3
+# Длина шкалы щита у игрока
+PLAYER_SHIELD_SCALE_WIDTH = 160
+# Высота шкалы щита у игрока
+PLAYER_SHIELD_SCALE_HEIGTH = 19
+# Толщина рамки у шкалы щита у игрока
+PLAYER_SHIELD_SCALE_BORDER = 3
+# Награды за прохождение уровней
+LEVELS_REWARD = {
+    1: 150,
+    2: 160
+}
+# Количество уровней
+LEVELS_AMOUNT = len(LEVELS_REWARD)

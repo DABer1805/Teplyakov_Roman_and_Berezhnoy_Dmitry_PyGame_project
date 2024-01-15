@@ -162,7 +162,7 @@ class Box(Tile):
 
 
 class Chunk:
-    def __init__(self, tile_images, enemy_images, x, y, chunk_map, ):
+    def __init__(self, tile_images, enemy_images, x, y, chunk_map, level_x):
         self.x, self.y = x, y
         # Все спрайты
         self.all_sprites = pygame.sprite.Group()
@@ -178,15 +178,13 @@ class Chunk:
         self.enemies_group = pygame.sprite.Group()
         for y, row in enumerate(chunk_map):
             for x, elem in enumerate(row[0]):
-                if elem == 'а':
-                    print('а')
                 # Тут те тайлы, котрые не рушатся, создаётся соответствующий
                 # спрайт и добавляется в группу
                 if elem in ('w', 's', 'l', 'd', 'L', '^', 'D'):
                     Wall(
                         self.bricks_group, self.all_sprites,
                         tile_images[elem], x + self.x * 8, y + self.y * 8,
-                                           self.x + self.y * 7,
+                                           self.x + self.y * level_x,
                     )
                 elif elem in ('#', '_', '-', '*', '/', '0', '1', '2', '3',
                               '4', '5', '6', '6', '7', '8', '9', 'r',
@@ -196,13 +194,13 @@ class Chunk:
                     PhantomTile(
                         self.phantom_group, self.all_sprites,
                         tile_images[elem], x + self.x * 8, y + self.y * 8,
-                                           self.x + self.y * 7
+                                           self.x + self.y * level_x
                     )
                 elif elem in ('b', 'B', '!'):
                     Box(
                         self.boxes_group, self.all_sprites,
                         tile_images[elem], x + self.x * 8, y + self.y * 8,
-                                           self.x + self.y * 7,
+                                           self.x + self.y * level_x,
                         max_hp=10 if elem == '!' else 5,
                         is_key_object=elem == '!'
                     )
@@ -210,58 +208,59 @@ class Chunk:
                     Enemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[0], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * 7,
+                                         self.x + self.y * level_x,
                         is_static=True
                     )
                 elif elem == 'O':
                     Enemy([self.enemies_group, self.all_sprites],
                           enemy_images[0], x + self.x * 8, y + self.y * 8,
-                          self.x + self.y * 7)
+                          self.x + self.y * level_x)
                 elif elem == 'h':
                     HeavyEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[1], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * 7,
+                                         self.x + self.y * level_x,
                         is_static=True
                     )
                 elif elem == 'H':
                     HeavyEnemy([self.enemies_group, self.all_sprites],
                                enemy_images[1], x + self.x * 8,
-                               y + self.y * 8, self.x + self.y * 7)
+                               y + self.y * 8, self.x + self.y * level_x)
                 elif elem == 'a':
                     ArmoredEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[2], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * 7,
+                                         self.x + self.y * level_x,
                         is_static=True
                     )
                 elif elem == 'A':
                     ArmoredEnemy([self.enemies_group, self.all_sprites],
                                  enemy_images[2], x + self.x * 8,
-                                 y + self.y * 8, self.x + self.y * 7)
+                                 y + self.y * 8, self.x + self.y * level_x)
                 elif elem == 'm':
                     MarksmanEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[3], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * 7,
+                                         self.x + self.y * level_x,
                         is_static=True
                     )
                 elif elem == 'M':
                     MarksmanEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[3], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * 7
+                                         self.x + self.y * level_x
                     )
 
-    def render(self, screen, camera, player_group, shot_sounds,
+    def render(self, screen, camera, frame, player_group, shot_sounds,
                bullet_group, all_blocks_group, bullet_image):
         # Тут пришлось сделать так, а не методом draw для группы спрайтов,
         # чтобы сохранить начальные координаты спрайтов, иначе из-за
         # особенностей камеры всё съезжает и получаются пропасти между чанками
         for enemy in self.enemies_group:
-            enemy.update(camera)
+            enemy.update(camera, frame)
             if enemy.ray.check_collide_with_player(player_group):
                 enemy.attack_player = True
+                enemy.current_image_idx = 0
                 enemy.speed = 0
                 enemy.attack_timer = 120
             else:
@@ -334,6 +333,10 @@ class Chunk:
                     dx = 0
                 enemy.x += dx
                 enemy.y += 5
+                enemy.ray.x += dx
+                enemy.ray.y += 5
+                enemy.ray.rect.x = enemy.ray.x - camera.x + camera.dx
+                enemy.ray.rect.y = enemy.ray.y - camera.y + camera.dy
             enemy.draw_health_scale(
                 screen, enemy.rect.x + (
                     10 if enemy.direction == DIRECTION_LEFT else -10
@@ -386,7 +389,7 @@ class Entity(pygame.sprite.Sprite):
     """ Сущность """
 
     def __init__(self, sprite_groups,
-                 entity_image: pygame.Surface,
+                 entity_images,
                  pos_x: int, pos_y: int, max_hp=1,
                  is_key_object=False) -> None:
         """
@@ -404,8 +407,10 @@ class Entity(pygame.sprite.Sprite):
         self.x = self.grid_x * TILE_WIDTH + 24
         self.y = self.grid_y * TILE_HEIGHT + 2
         self.collide_list = [False for _ in range(8)]
+        self.current_image_idx = 0
+        self.images = entity_images
         # Изображение сущности
-        self.image = entity_image
+        self.image = entity_images[self.current_image_idx]
         # Размещаем сущность на экране
         self.rect = self.image.get_rect().move(self.x, self.y)
 
@@ -470,7 +475,7 @@ class Player(Entity):
     """ Игрок """
 
     def __init__(self, sprite_groups,
-                 player_image: pygame.Surface,
+                 player_images,
                  pos_x: int, pos_y: int) -> None:
         """
         :param player_group: Групп, куда будет добавлен игрок
@@ -479,7 +484,7 @@ class Player(Entity):
         :param pos_x: позиция по оси x
         :param pos_y: позиция по оси y
         """
-        super().__init__(sprite_groups, player_image,
+        super().__init__(sprite_groups, player_images,
                          pos_x, pos_y)
 
         # Подключаемся к базе данных
@@ -495,11 +500,15 @@ class Player(Entity):
         ).fetchone()[0]
 
         # HP игрока
-        self.hp = self.cur.execute('SELECT HP FROM Player_data').fetchone()[0]
+        self.max_hp = self.cur.execute(
+            'SELECT HP FROM Player_data'
+        ).fetchone()[0]
+        self.hp = self.max_hp
         # Щит игрока
-        self.shield = self.cur.execute(
+        self.max_shield = self.cur.execute(
             'SELECT Shields FROM Player_data'
         ).fetchone()[0]
+        self.shield = self.max_shield
         # Таймер перезарядки щита
         self.shield_recharge = 0
         # Сколько патронов в обойме
@@ -523,8 +532,7 @@ class Player(Entity):
 class Enemy(Entity):
     """Враг"""
 
-    def __init__(self, sprite_groups,
-                 enemy_image: pygame.Surface,
+    def __init__(self, sprite_groups, enemy_images,
                  pos_x: int, pos_y: int,
                  chunk_number,
                  is_static=False, max_distance=150,
@@ -537,12 +545,14 @@ class Enemy(Entity):
         :param pos_y: позиция по оси y
         :key direction: направление врага
         """
-        super().__init__(sprite_groups, enemy_image, pos_x, pos_y)
+        super().__init__(sprite_groups, enemy_images, pos_x, pos_y)
 
         # Изменение изображения врага в зависимости стороны, в которую он
         # смотрит
         if direction == DIRECTION_LEFT:
-            self.image = pygame.transform.flip(enemy_image, True, False)
+            self.image = pygame.transform.flip(
+                enemy_images[self.current_image_idx], True, False
+            )
 
         self.chunk_number = chunk_number
 
@@ -577,32 +587,41 @@ class Enemy(Entity):
                        self.x + self.rect.w,
                        self.y + self.rect.h // 2)
 
-    def update(self, camera) -> None:
+    def update(self, camera, frame) -> None:
         """Перемещение врага"""
         # Определяем направление движения врага
         if not self.is_static:
-            if self.direction and not any(
-                    (
-                            self.collide_list[5],
-                            (
-                                    not self.collide_list[7] and
-                                    self.collide_list[3]
-                            )
-                    )
-            ):
-                self.x += self.speed
-                self.ray.x += self.speed
-            elif not any(
-                    (
-                            self.collide_list[4],
-                            (
-                                    not self.collide_list[7] and
-                                    self.collide_list[2]
-                            )
-                    )
-            ):
-                self.x -= self.speed
-                self.ray.x -= self.speed
+            if not self.attack_player:
+                if self.direction and not any(
+                        (
+                                self.collide_list[5],
+                                (
+                                        not self.collide_list[7] and
+                                        self.collide_list[3]
+                                )
+                        )
+                ):
+                    self.x += self.speed
+                    self.ray.x += self.speed
+                    if frame % 5 == 0:
+                        self.current_image_idx += 1
+                        if self.current_image_idx == len(self.images):
+                            self.current_image_idx = 0
+                elif not any(
+                        (
+                                self.collide_list[4],
+                                (
+                                        not self.collide_list[7] and
+                                        self.collide_list[2]
+                                )
+                        )
+                ):
+                    self.x -= self.speed
+                    self.ray.x -= self.speed
+                    if frame % 5 == 0:
+                        self.current_image_idx += 1
+                        if self.current_image_idx == len(self.images):
+                            self.current_image_idx = 0
         self.distance += self.speed
 
         # Меняем направление движения и изображение врага, если враг прошел
@@ -614,22 +633,25 @@ class Enemy(Entity):
             else:
                 self.direction = DIRECTION_RIGHT
                 self.ray.x += self.ray.rect.w
-            # Отражаем изображение врага
-            self.image = pygame.transform.flip(self.image, True, False)
             # Обнуляем дистанцию
             self.distance = 0
+        if self.direction == DIRECTION_RIGHT:
+            self.image = self.images[self.current_image_idx]
+        else:
+            self.image = pygame.transform.flip(
+                self.images[self.current_image_idx], True, False
+            )
         self.ray.rect.x = self.ray.x - camera.x + camera.dx
         self.ray.rect.y = self.ray.y - camera.y + camera.dy
 
 
 class HeavyEnemy(Enemy):
-    def __init__(self, sprite_groups,
-                 enemy_image: pygame.Surface,
+    def __init__(self, sprite_groups, enemy_images,
                  pos_x: int, pos_y: int,
                  chunk_number,
                  is_static=False, max_distance=100,
                  direction=DIRECTION_LEFT) -> None:
-        super().__init__(sprite_groups, enemy_image, pos_x, pos_y,
+        super().__init__(sprite_groups, enemy_images, pos_x, pos_y,
                          chunk_number, is_static, max_distance, direction)
         self.type = 1
         self.max_hp = 20
@@ -641,13 +663,12 @@ class HeavyEnemy(Enemy):
 
 
 class ArmoredEnemy(Enemy):
-    def __init__(self, sprite_groups,
-                 enemy_image: pygame.Surface,
+    def __init__(self, sprite_groups, enemy_images,
                  pos_x: int, pos_y: int,
                  chunk_number,
                  is_static=False, max_distance=150,
                  direction=DIRECTION_LEFT) -> None:
-        super().__init__(sprite_groups, enemy_image, pos_x, pos_y,
+        super().__init__(sprite_groups, enemy_images, pos_x, pos_y,
                          chunk_number, is_static, max_distance, direction)
         self.type = 2
         self.max_hp = 7
@@ -659,12 +680,11 @@ class ArmoredEnemy(Enemy):
 
 
 class MarksmanEnemy(Enemy):
-    def __init__(self, sprite_groups,
-                 enemy_image: pygame.Surface,
+    def __init__(self, sprite_groups, enemy_images,
                  pos_x: int, pos_y: int, chunk_number,
                  is_static=False, max_distance=70,
                  direction=DIRECTION_LEFT) -> None:
-        super().__init__(sprite_groups, enemy_image, pos_x, pos_y,
+        super().__init__(sprite_groups, enemy_images, pos_x, pos_y,
                          chunk_number, is_static, max_distance, direction)
         self.type = 3
         self.max_hp = 7
@@ -713,7 +733,7 @@ class Bullet(pygame.sprite.Sprite):
         # Флаг для различия пули игрока и пули врага
         self.is_enemy_bullet = is_enemy_bullet
 
-    def update(self, destructible_groups, indestructible_groups,
+    def update(self, player, destructible_groups, indestructible_groups,
                destroy_sounds, hit_sounds, player_group, camera,
                screen, drop_images, selection_sound, chunks):
         """ Перемещение снаряда """
@@ -740,7 +760,7 @@ class Bullet(pygame.sprite.Sprite):
                         hit_sounds[1].play()
                         self.kill()
                         return False
-                destructible_sprites_hit_list[0].hp -= 1
+                destructible_sprites_hit_list[0].hp -= player.damage
                 if destructible_sprites_hit_list[0].hp <= 0:
                     sprite_type = destructible_sprites_hit_list[0].type
                     if sprite_type in (0, 1, 2, 3):
@@ -791,11 +811,14 @@ class Bullet(pygame.sprite.Sprite):
         if self.is_enemy_bullet:
             if pygame.sprite.spritecollideany(self, player_group):
                 for player in player_group:
-                    if player.shield:
-                        player.shield -= 1
-                        player.shield_recharge = 300
+                    if player.shield > 0:
+                        player.shield -= self.damage
+                        if player.shield < 0:
+                            player.shield = 0
                     else:
-                        player.hp -= 1
+                        player.hp -= self.damage
+                    if not player.shield_recharge:
+                        player.shield_recharge = 150
                 self.kill()
 
         screen.blit(self.image, (self.rect.x, self.rect.y))
@@ -806,17 +829,18 @@ class Button:
     """Класс для создания кнопок"""
 
     def __init__(self, width, height, pos_x, pos_y,
-                 active_image, inactive_image, button_name,
-                 action=None):
+                 active_image, inactive_image, text,
+                 action=None, font_size=20):
         self.width = width
         self.height = height
         self.pos_x = pos_x
         self.pos_y = pos_y
         self.active_image = active_image
         self.inactive_image = inactive_image
-        self.button_name = button_name
+        self.text = text
         self.action = action
         self.is_visible = True
+        self.font_size = font_size
 
     def draw(self, screen):
         """Отрисовка кнопок"""
@@ -837,8 +861,23 @@ class Button:
             else:
                 screen.blit(self.inactive_image, (self.pos_x, self.pos_y))
                 arrow_idx = 0
+            self.print_text(screen, self.text, font_size=self.font_size)
             return arrow_idx
         return 0
+
+    def print_text(self, screen, text: str,
+                   font_color=(255, 255, 255),
+                   font_name: str = 'bahnschrift',
+                   font_size: int = 30):
+        # Выбранный шрифт
+        font = pygame.font.SysFont(font_name, font_size)
+        # Отрисовываем на экране выбранный текст
+        text_surface = font.render(text, True, font_color)
+        text_rect = text_surface.get_rect(
+            center=(self.pos_x + self.width / 2,
+                    self.pos_y + self.height / 2 + 2)
+        )
+        screen.blit(text_surface, text_rect)
 
 
 class Ray(pygame.sprite.Sprite):
@@ -889,7 +928,7 @@ class ImprovementScales:
                 21, 21, 472, 215 + index * 48,
                 active_upgrade_button_image,
                 inactive_upgrade_button_image,
-                f'upgrade_button{index + 1}', partial(
+                '', partial(
                     self.upgrade, index, player, cur, con, upgrade_sound
                 )
             ))
@@ -976,13 +1015,15 @@ class ImprovementScales:
                 "SELECT Damage FROM Player_data"
             ).fetchone()[0]
         elif scale == 'HP':
-            player.hp = cur.execute(
+            player.max_hp = cur.execute(
                 "SELECT HP FROM Player_data"
             ).fetchone()[0]
+            player.hp = player.max_hp
         elif scale == 'Shields':
-            player.shield = cur.execute(
+            player.max_shield = cur.execute(
                 'SELECT Shields FROM Player_data'
             ).fetchone()[0]
+            player.shield = player.max_shield
 
 
 class ImprovementScale:
