@@ -10,8 +10,8 @@ sssssssssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDsssssssssssssssssssssssss
 sDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDs
 sDDDDDDssssssssssssssssssssssssssssssssssssssssssssssssssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDs
 sDDDDDDssr.!...ssн.....__р.....__т.....__п.....ss8.....ssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDs
-sDDDDDDss......##B.....--.H....--Bm....--......##......ssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDs
-sDDDDDDss....ha##BB.oa.--.BBB..--BBo.o.--ha..o.##......ssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDs
+sDDDDDDss......##B.....--......--Bm....--......##......ssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDs
+sDDDDDDss.....@##BB....--.BBB..--BBo.o.--ha..o.##......ssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDs
 sDDDDDDssssssssssssssssssssssssssssssssssssssssssss--ssssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDs
 sssssssssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDs--sDsssssssssssssssssssssssssssssssssssssssssssssssss
 sssssssssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDs-ssDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDsssssssss
@@ -35,7 +35,7 @@ sDDDDDDssDDDDDDssDDDDDDssDDDDDDssD*DD*DssD*DD*DssD*DD*DssD*DD*DssD*DD*DssD*DD*Ds
 sDDDDDDsssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss-ssssDDDDDDs
 sDDDDDDssл.....__т.....__о.....ssа..o..__и.....__е.....ss1.....__4.....__0.....ssё.....ss7B....ssDDDDDDs
 sDDDDDDss......--......--.....o##..BB..--.....B--......##......--...o..--......##......##BB.sB.ssDDDDDDs
-sDDDDDDss..@...--.O..O.--.BBB.B##.BBBB.--.O..BB--.O..O.##.O..m.--..BBB.--.a..O.##.a....##BB.sBBssDDDDDDs
+sDDDDDDss......--.O..O.--.BBB.B##.BBBB.--.O..BB--.O..O.##.O..m.--..BBB.--.a..O.##.a....##BB.sBBssDDDDDDs
 sDDDDDDssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssDDDDDDs
 sssssssssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDssDDDDDDsssssssss
 ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss

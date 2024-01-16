@@ -536,6 +536,9 @@ PAUSE_BACKGROUND = load_image('pause_background_image.png')
 CHARACTERISTICS_BACKGROUND = load_image(
     'characteristics_background_image.png'
 )
+GUIDE_MENU_IMAGE = load_image(
+    'guide_menu_image.png'
+)
 # Листы со спрайтами медной монетки
 COINS_SHEETS = [load_image('copper_coins_sheet8x1.png'),
                 load_image('silver_coins_sheet8x1.png'),
@@ -604,6 +607,14 @@ con = None
 
 hp_damage_timer = 0
 shield_damage_timer = 0
+current_guide_index = 0
+
+guide_list = [
+    load_image('guide_image_1.png'), load_image('guide_image_2.png'),
+    load_image('guide_image_3.png'), load_image('guide_image_4.png'),
+    load_image('guide_image_5.png'), load_image('guide_image_6.png'),
+    load_image('guide_image_7.png'), load_image('guide_image_8.png')
+]
 
 chunks = []
 
@@ -624,7 +635,7 @@ def start_game():
 def open_endgame_menu():
     global start, current_menu
     buttons.append(Button(
-        151, 31, 324, 270,
+        151, 31, 324, 240,
         ACTIVE_BUTTON_IMAGE,
         INACTIVE_BUTTON_IMAGE,
         'Выбор уровня', select_level
@@ -636,13 +647,39 @@ def open_endgame_menu():
 def open_victory_menu():
     global start, current_menu
     buttons.append(Button(
-        151, 31, 324, 270,
+        151, 31, 324, 240,
         ACTIVE_BUTTON_IMAGE,
         INACTIVE_BUTTON_IMAGE,
         'Выбор уровня', select_level
     ))
     current_menu = 5
     start = False
+
+
+def open_guide_menu():
+    global current_menu
+    buttons.clear()
+    buttons.append(
+        Button(
+            28, 28, 187, 6,
+            ACTIVE_SMALL_RETURN_BUTTON_IMAGE,
+            INACTIVE_SMALL_RETURN_BUTTON_IMAGE,
+            '', return_to_main_menu
+        )
+    )
+    buttons.append(Button(
+        21, 21, 585, 200,
+        ACTIVE_RIGHT_SHIFT_BUTTON_IMAGE,
+        INACTIVE_RIGHT_SHIFT_BUTTON_IMAGE,
+        '', partial(shift_guide_idx, 1)
+    ))
+    buttons.append(Button(
+        21, 21, 185, 200,
+        ACTIVE_LEFT_SHIFT_BUTTON_IMAGE,
+        INACTIVE_LEFT_SHIFT_BUTTON_IMAGE,
+        '', partial(shift_guide_idx, 0)
+    ))
+    current_menu = 6
 
 
 def return_to_pause_menu():
@@ -686,7 +723,7 @@ def return_to_main_menu():
             151, 31, 70, 180,
             ACTIVE_BUTTON_IMAGE,
             INACTIVE_BUTTON_IMAGE,
-            'Руководство', lambda: print('Руководство')
+            'Руководство', open_guide_menu
         ),
         Button(
             151, 31, 70, 240,
@@ -778,6 +815,18 @@ def shift_characteristics_idx(direction):
             current_characteristics_target
         ].scale_objects[index].current_cost != 'max':
             button.is_visible = True
+
+
+def shift_guide_idx(direction):
+    global current_guide_index
+    if direction == 0:
+        current_guide_index -= 1
+        if current_guide_index < 0:
+            current_guide_index = len(guide_list) - 1
+    else:
+        current_guide_index += 1
+        if current_guide_index > len(guide_list) - 1:
+            current_guide_index = 0
 
 
 def continue_game():
@@ -1129,6 +1178,9 @@ while running:
             virtual_surface.blit(ENDGAME_MENU_IMAGE, (0, 0))
         elif current_menu == 5:
             virtual_surface.blit(VICTORY_MENU_IMAGE, (0, 0))
+        elif current_menu == 6:
+            virtual_surface.blit(GUIDE_MENU_IMAGE, (0, 0))
+            virtual_surface.blit(guide_list[current_guide_index], (220, 39))
 
     for button in buttons:
         cur_idx = button.draw(virtual_surface)
