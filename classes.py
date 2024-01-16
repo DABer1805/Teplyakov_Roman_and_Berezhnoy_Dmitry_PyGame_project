@@ -114,8 +114,10 @@ class Tile(pygame.sprite.Sprite):
         # Размещаем на экране текущий блок
         self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x,
                                                TILE_HEIGHT * pos_y)
+        # Координаты
         self.x = self.rect.x
         self.y = self.rect.y
+        # Номер чанка
         self.chunk_number = chunk_number
 
 
@@ -170,11 +172,14 @@ class Box(Tile):
         """
         super().__init__(tiles_group, all_sprites, image, pos_x, pos_y,
                          chunk_number)
-        # Прочность блока
+        # Флаг для уровня с реактором
         self.is_key_object = is_key_object
+        # Тип
         self.type = 4
+        # Хп
         self.max_hp = max_hp
         self.hp = self.max_hp
+        # Координаты по оси
         self.y += 1
 
     def pin_to_ground(self, sprite_group):
