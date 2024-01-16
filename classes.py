@@ -1,4 +1,4 @@
-from random import randrange, random
+from random import random
 
 import pygame
 import sqlite3
@@ -14,19 +14,40 @@ from typing import Literal
 
 
 class AnimatedSprite(pygame.sprite.Sprite):
-    def __init__(self, sheet, columns, rows, x, y, target_group, all_sprites):
+    """Класс для анимации монет"""
+
+    def __init__(
+            self, sheet, columns: int, rows: int, x: int, y: int,
+            target_group: pygame.sprite.Group, all_sprites: pygame.sprite.Group
+    ):
+        """
+        :param sheet: изображение спрайта
+        :param x: позиция по оси x
+        :param y: позиция по оси y
+        :param target_group: группа спрайтов в которой будут монеты
+        :param all_sprites: группа всех спрайтов
+        """
         super().__init__(target_group, all_sprites)
+        # Фигура объекта
+        self.rect = None
+        # Координаты
         self.x = x
         self.y = y
+        # Кадры
         self.frames = []
         self.cut_sheet(sheet, columns, rows)
+        # Текущий кадр
         self.cur_frame = 0
+        # Счетчик
         self.counter = 0
+        # Текущее изображение
         self.image = self.frames[self.cur_frame]
 
-    def cut_sheet(self, sheet, columns, rows):
+    def cut_sheet(self, sheet, columns, rows) -> None:
+        """'Нарезка' кадров, для анимации"""
         self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
                                 sheet.get_height() // rows)
+
         for j in range(rows):
             for i in range(columns):
                 frame_location = (self.rect.w * i, self.rect.h * j)
@@ -39,20 +60,38 @@ class AnimatedSprite(pygame.sprite.Sprite):
 
 
 class Coin(AnimatedSprite):
-    def __init__(self, selection_sound, sheets, type, columns, rows, x, y,
-                 target_group,
-                 all_sprites):
-        super().__init__(sheets[type], columns, rows, x, y,
+    """Монеты"""
+
+    def __init__(
+            self, selection_sound, sheets, type_of_coin: int, columns: int,
+            rows: int,
+            x: int, y: int, target_group: pygame.sprite.Group,
+            all_sprites: pygame.sprite.Group
+    ):
+        """
+        :param selection_sound: звук подбора монеты
+        :param sheets: изображения монеты
+        :param type_of_coin: тип монеты
+        :param x: позиция по оси x
+        :param y: позиция по оси y
+        :param target_group: группа спрайтов в которой будут монеты
+        :param all_sprites: группа всех спрайтов
+        """
+
+        super().__init__(sheets[type_of_coin], columns, rows, x, y,
                          target_group, all_sprites)
+
+        # Звук подбора
         self.selection_sound = selection_sound
-        cost = None
-        if type == 0:
-            cost = 1
-        elif type == 1:
-            cost = 5
-        elif type == 2:
-            cost = 15
-        self.cost = cost
+
+        # Присваивание цены
+        self.cost = None
+        if type_of_coin == 0:
+            self.cost = 1
+        elif type_of_coin == 1:
+            self.cost = 5
+        elif type_of_coin == 2:
+            self.cost = 15
 
 
 class Tile(pygame.sprite.Sprite):
@@ -60,10 +99,14 @@ class Tile(pygame.sprite.Sprite):
 
     def __init__(self, tiles_group: pygame.sprite.Group,
                  all_sprites: pygame.sprite.Group,
-                 image, pos_x, pos_y, chunk_number) -> None:
+                 image, pos_x: int, pos_y: int, chunk_number: int) -> None:
         """
         :param tiles_group: Группа, куда будет добавлен блок
         :param all_sprites: Все спрайты
+        :param image: изображение блока
+        :param pos_x: позиция по оси x
+        :param pos_y: позиция по оси y
+        :param chunk_number:
         """
         super().__init__(tiles_group, all_sprites)
         # Изображение спрайта
@@ -85,8 +128,6 @@ class PhantomTile(Tile):
         """
         :param tiles_group: Группа, в которую будет добавлен текущий блок
         :param all_sprites: Все спрайты
-        :param tile_images: Словарик с изображениями всех блоков
-        :param image_name: Название изображения
         :param pos_x: позиция по оси x
         :param pos_y: позиция по оси y
         """
@@ -99,14 +140,14 @@ class Wall(Tile):
 
     def __init__(self, tiles_group: pygame.sprite.Group,
                  all_sprites: pygame.sprite.Group,
-                 image, pos_x: int, pos_y: int, chunk_number) -> None:
+                 image, pos_x: int, pos_y: int, chunk_number: int) -> None:
         """
         :param tiles_group: Группа, в которую будет добавлен текущий блок
         :param all_sprites: Все спрайты
-        :param tile_images: Словарик с изображениями всех блоков
-        :param image_name: Название изображения
+        :param image: Название изображения
         :param pos_x: позиция по оси x
         :param pos_y: позиция по оси y
+        :param chunk_number: чаек объекта
         """
         super().__init__(tiles_group, all_sprites, image, pos_x, pos_y,
                          chunk_number)
@@ -117,14 +158,15 @@ class Box(Tile):
 
     def __init__(self, tiles_group: pygame.sprite.Group,
                  all_sprites: pygame.sprite.Group,
-                 image, pos_x: int, pos_y: int, chunk_number,
+                 image, pos_x: int, pos_y: int, chunk_number: int,
                  max_hp=5, is_key_object=False) -> None:
         """
         :param tiles_group: Группа, в которую будет добавлен текущий блок
         :param all_sprites: Все спрайты
-        :param tile_images: Словарик с изображениями всех блоков
         :param pos_x: позиция по оси x
         :param pos_y: позиция по оси y
+        :param chunk_number: чаек объекта
+        :key is_key_object: флаг для уровней с реактором
         """
         super().__init__(tiles_group, all_sprites, image, pos_x, pos_y,
                          chunk_number)
@@ -136,17 +178,17 @@ class Box(Tile):
         self.y += 1
 
     def pin_to_ground(self, sprite_group):
+        """Падение на землю"""
         for sprite in sprite_group:
             if sprite != self:
-                if sprite.rect.collidepoint(
-                        self.rect.midbottom
-                ):
+                if sprite.rect.collidepoint(self.rect.midbottom):
                     break
         else:
             self.y += 5
             self.rect.y += 5
 
     def draw_health_scale(self, screen, x, y):
+        """Отрисовка шкалы здоровья"""
         pygame.draw.rect(screen, '#2b2b2b', pygame.Rect(
             x, y, KEY_OBJECT_HEALTH_SCALE_WIDTH,
             KEY_OBJECT_HEALTH_SCALE_HEIGTH
@@ -162,7 +204,20 @@ class Box(Tile):
 
 
 class Chunk:
-    def __init__(self, tile_images, enemy_images, x, y, chunk_map, level_x):
+    """Чанк"""
+
+    def __init__(
+            self, tile_images: dict, enemy_images: list, x: int, y: int,
+            chunk_map: list, level_x: int
+    ):
+        """
+        :param tile_images: изображение всех тайлов
+        :param enemy_images: изображения всех врагов
+        :param x: координата по оси x
+        :param y: координата по оси y
+        :param chunk_map: карта разбитая на сетку чанков
+        :param level_x: длина уровня по оси x
+        """
         self.x, self.y = x, y
         # Все спрайты
         self.all_sprites = pygame.sprite.Group()
@@ -176,15 +231,16 @@ class Chunk:
         self.coins_group = pygame.sprite.Group()
         # Спрайты врагов
         self.enemies_group = pygame.sprite.Group()
+
         for y, row in enumerate(chunk_map):
             for x, elem in enumerate(row[0]):
-                # Тут те тайлы, котрые не рушатся, создаётся соответствующий
+                # Тут те тайлы, которые не рушатся, создаётся соответствующий
                 # спрайт и добавляется в группу
                 if elem in ('w', 's', 'l', 'd', 'L', '^', 'D'):
                     Wall(
                         self.bricks_group, self.all_sprites,
                         tile_images[elem], x + self.x * 8, y + self.y * 8,
-                                           self.x + self.y * level_x,
+                        self.x + self.y * level_x,
                     )
                 elif elem in ('#', '_', '-', '*', '/', '0', '1', '2', '3',
                               '4', '5', '6', '6', '7', '8', '9', 'r',
@@ -194,13 +250,13 @@ class Chunk:
                     PhantomTile(
                         self.phantom_group, self.all_sprites,
                         tile_images[elem], x + self.x * 8, y + self.y * 8,
-                                           self.x + self.y * level_x
+                        self.x + self.y * level_x
                     )
                 elif elem in ('b', 'B', '!'):
                     Box(
                         self.boxes_group, self.all_sprites,
                         tile_images[elem], x + self.x * 8, y + self.y * 8,
-                                           self.x + self.y * level_x,
+                        self.x + self.y * level_x,
                         max_hp=10 if elem == '!' else 5,
                         is_key_object=elem == '!'
                     )
@@ -208,8 +264,7 @@ class Chunk:
                     Enemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[0], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * level_x,
-                        is_static=True
+                        self.x + self.y * level_x, is_static=True
                     )
                 elif elem == 'O':
                     Enemy([self.enemies_group, self.all_sprites],
@@ -219,7 +274,7 @@ class Chunk:
                     HeavyEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[1], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * level_x,
+                        self.x + self.y * level_x,
                         is_static=True
                     )
                 elif elem == 'H':
@@ -230,8 +285,7 @@ class Chunk:
                     ArmoredEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[2], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * level_x,
-                        is_static=True
+                        self.x + self.y * level_x, is_static=True
                     )
                 elif elem == 'A':
                     ArmoredEnemy([self.enemies_group, self.all_sprites],
@@ -241,14 +295,13 @@ class Chunk:
                     MarksmanEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[3], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * level_x,
-                        is_static=True
+                        self.x + self.y * level_x, is_static=True
                     )
                 elif elem == 'M':
                     MarksmanEnemy(
                         [self.enemies_group, self.all_sprites],
                         enemy_images[3], x + self.x * 8, y + self.y * 8,
-                                         self.x + self.y * level_x
+                        self.x + self.y * level_x
                     )
 
     def render(self, screen, camera, frame, player_group, shot_sounds,
@@ -304,24 +357,29 @@ class Chunk:
                     if enemy.timer == 0:
                         enemy.is_shoot = True
 
+        # Смещение фигуры спрайтов
         for sprite in self.all_sprites:
             sprite.rect.x = sprite.x - camera.x + camera.dx
             sprite.rect.y = sprite.y - camera.y + camera.dy
 
+        # Отрисовка блоков
         self.phantom_group.draw(screen)
         self.bricks_group.draw(screen)
 
         target_group = pygame.sprite.Group()
         target_group.add(self.boxes_group)
         target_group.add(self.bricks_group)
+        # Смещение коробок в воздухе на блоки
         for box in self.boxes_group:
             box.pin_to_ground(target_group)
             if box.is_key_object:
                 box.draw_health_scale(
                     screen, box.rect.x - 25, box.rect.y - 20
                 )
+        # Отрисовка коробок
         self.boxes_group.draw(screen)
 
+        # Перемещение врагов
         for enemy in self.enemies_group:
             enemy.check_collision_sides(all_blocks_group)
             if not enemy.collide_list[7]:
@@ -340,10 +398,10 @@ class Chunk:
             enemy.draw_health_scale(
                 screen, enemy.rect.x + (
                     10 if enemy.direction == DIRECTION_LEFT else -10
-                ),
-                        enemy.rect.y - 10
+                ), enemy.rect.y - 10
             )
 
+        # Удаление при подборе или смещение и анимация монет
         for coin in self.coins_group:
             player = pygame.sprite.spritecollide(coin, player_group, False)
             if pygame.sprite.spritecollideany(coin, player_group):
@@ -359,7 +417,10 @@ class Chunk:
                 coin.counter = 0
             else:
                 coin.counter += 1
+
+        # Отрисовка монет
         self.coins_group.draw(screen)
+        # Отрисовка врагов
         self.enemies_group.draw(screen)
 
 
@@ -368,11 +429,14 @@ class Camera:
 
     def __init__(self, target) -> None:
         """
-        :param field_size: размеры уровня
+        :param target: объект за которым закреплена камера
         """
+        # Экземпляр класса объекта
         self.target = target
+        # Координаты
         self.x = 0
         self.y = 0
+        # Изменение координат
         self.dx = -(self.target.rect.x +
                     self.target.rect.w // 2 - WIDTH // 2)
         self.dy = -(self.target.rect.y +
@@ -393,29 +457,38 @@ class Entity(pygame.sprite.Sprite):
                  pos_x: int, pos_y: int, max_hp=1,
                  is_key_object=False) -> None:
         """
-        :param entity_group: Группа, куда будет добавлена сущность
-        :param entity_image: Изображение сущности
+        :param sprite_groups: Группы спрайтов, куда будет добавлена сущность
+        :param entity_images: Изображения всех видов сущностей
         :param pos_x: позиция по оси x
         :param pos_y: позиция по оси y
+        :key max_hp: максимальное хп
+        :key is_key_object: флаг для уровней с реактором
         """
         super().__init__(*sprite_groups)
+        # Флаг для уровней с реактором
         self.is_key_object = is_key_object
+        # Координаты персонажа в сетке (в тайлах)
         self.grid_x = pos_x
         self.grid_y = pos_y
+        # Хп сущности
         self.max_hp = max_hp
         self.hp = max_hp
+        # Координаты персонажа в пикселях
         self.x = self.grid_x * TILE_WIDTH + 24
         self.y = self.grid_y * TILE_HEIGHT + 2
+        # Список с флагами для проверки соприкосновений с группой спрайтов
         self.collide_list = [False for _ in range(8)]
+        # Индекс для получения изображения сущности
         self.current_image_idx = 0
+        # Изображения сущностей
         self.images = entity_images
-        # Изображение сущности
+        # Изображение самой сущности
         self.image = entity_images[self.current_image_idx]
         # Размещаем сущность на экране
         self.rect = self.image.get_rect().move(self.x, self.y)
 
     def check_collision_sides(self, sprite_group):
-        """ Проверяем столкновение игрока с группой спрайтов, при это
+        """ Проверяем столкновение игрока с группой спрайтов, при этом
         получая информацию о том, какими точками спрайт игрока
         соприкасается с другими спрайтами
 
@@ -460,6 +533,7 @@ class Entity(pygame.sprite.Sprite):
                 )
 
     def draw_health_scale(self, screen, x, y):
+        """Отрисовка шкалы здоровья"""
         pygame.draw.rect(screen, '#2b2b2b', pygame.Rect(
             x, y, HEALTH_SCALE_WIDTH, HEALTH_SCALE_HEIGTH
         ))
@@ -472,15 +546,13 @@ class Entity(pygame.sprite.Sprite):
 
 
 class Player(Entity):
-    """ Игрок """
+    """Игрок"""
 
-    def __init__(self, sprite_groups,
-                 player_images,
-                 pos_x: int, pos_y: int) -> None:
+    def __init__(self, sprite_groups: tuple,
+                 player_images: list, pos_x: int, pos_y: int) -> None:
         """
-        :param player_group: Групп, куда будет добавлен игрок
-        :param all_sprites: Все спрайты
-        :param player_image: Изображение игрока
+        :param sprite_groups: Группа, куда будет добавлен игрок
+        :param player_images: Изображение игрока
         :param pos_x: позиция по оси x
         :param pos_y: позиция по оси y
         """
@@ -491,14 +563,14 @@ class Player(Entity):
         self.con = sqlite3.connect('DataBase.sqlite')
         self.cur = self.con.cursor()
 
+        # Монеты игрока
         self.coins = self.cur.execute(
             "SELECT Coins FROM Player_data"
         ).fetchone()[0]
-
+        # Урон игрока
         self.damage = self.cur.execute(
             "SELECT Damage FROM Player_data"
         ).fetchone()[0]
-
         # HP игрока
         self.max_hp = self.cur.execute(
             'SELECT HP FROM Player_data'
@@ -516,7 +588,7 @@ class Player(Entity):
             'SELECT Ammo FROM Player_data'
         ).fetchone()[0]
         self.ammo = self.clip_size
-        # Скорость стерльбы
+        # Скорость стрельбы
         self.shot_delay = self.cur.execute(
             'SELECT Shot_delay FROM Player_data'
         ).fetchone()[0]
@@ -532,17 +604,20 @@ class Player(Entity):
 class Enemy(Entity):
     """Враг"""
 
-    def __init__(self, sprite_groups, enemy_images,
-                 pos_x: int, pos_y: int,
-                 chunk_number,
+    def __init__(self, sprite_groups: list,
+                 enemy_images: list, pos_x: int, pos_y: int,
+                 chunk_number: int,
                  is_static=False, max_distance=150,
                  direction=DIRECTION_LEFT) -> None:
         """
-        :param enemies_group: Группа, куда будет добавлен враг
-        :param all_sprites: Все спрайты
-        :param enemy_image: Изображение врага
+        :param sprite_groups: Группа, куда будет добавлен враг
+        :param enemy_images: Изображения врагов
         :param pos_x: позиция по оси x
         :param pos_y: позиция по оси y
+        :param chunk_number: номер чанка
+        :key is_static: флаг для определения движения
+        :key max_distance: максимальная дистанция на которую ходит враг в
+        одном направлении
         :key direction: направление врага
         """
         super().__init__(sprite_groups, enemy_images, pos_x, pos_y)
@@ -553,16 +628,16 @@ class Enemy(Entity):
             self.image = pygame.transform.flip(
                 enemy_images[self.current_image_idx], True, False
             )
-
+        # номер чанка
         self.chunk_number = chunk_number
-
+        # тип врага
         self.type = 0
         self.x -= 24
         # HP врага
         self.max_hp = 5
         self.hp = self.max_hp
         self.is_static = is_static
-        # Пройденный промежуток px
+        # Пройденный промежуток в px
         self.distance = 0
         self.max_distance = max_distance
         # Скорость
@@ -573,23 +648,28 @@ class Enemy(Entity):
         self.attack_player = False
         # Флаг, для создания пули
         self.is_shoot = True
-        # Значение таймера
+        # Таймер
         self.timer = 0
+        # Скорость стрельбы
         self.shot_delay = 70
+        # Максимальный объем обоймы
         self.clip_size = 5
+        # Патроны
         self.ammo = self.clip_size
+        # Таймер перезарядки
         self.recharge_timer = 120
         # Таймер для задержки атаки
         self.attack_timer = 0
+        # Урон
         self.damage = 2
-        # Луч врага
+        # Луч видимости игрока
         self.ray = Ray(self.direction,
                        self.x + self.rect.w,
                        self.y + self.rect.h // 2)
 
     def update(self, camera, frame) -> None:
         """Перемещение врага"""
-        # Определяем направление движения врага
+        # Проверка на тип поведения
         if not self.is_static:
             if not self.attack_player:
                 if self.direction and not any(
@@ -646,53 +726,110 @@ class Enemy(Entity):
 
 
 class HeavyEnemy(Enemy):
-    def __init__(self, sprite_groups, enemy_images,
-                 pos_x: int, pos_y: int,
-                 chunk_number,
+    """Тяжелый враг"""
+
+    def __init__(self, sprite_groups: list,
+                 enemy_images: list, pos_x: int, pos_y: int,
+                 chunk_number: int,
                  is_static=False, max_distance=100,
                  direction=DIRECTION_LEFT) -> None:
+        """
+            :param sprite_groups: Группа, куда будет добавлен враг
+            :param enemy_images: Изображения врагов
+            :param pos_x: позиция по оси x
+            :param pos_y: позиция по оси y
+            :param chunk_number: номер чанка
+            :key is_static: флаг для определения движения
+            :key max_distance: максимальная дистанция на которую ходит враг в
+            одном направлении
+            :key direction: направление врага
+        """
         super().__init__(sprite_groups, enemy_images, pos_x, pos_y,
                          chunk_number, is_static, max_distance, direction)
+        # Тип врага
         self.type = 1
+        # Хп врага
         self.max_hp = 20
         self.hp = self.max_hp
+        # Урон врага
         self.damage = 1
+        # Максимальный объем обоймы
         self.clip_size = 10
+        # Патроны
         self.ammo = self.clip_size
+        # Скорость стрельбы
         self.shot_delay = 25
 
 
 class ArmoredEnemy(Enemy):
-    def __init__(self, sprite_groups, enemy_images,
-                 pos_x: int, pos_y: int,
-                 chunk_number,
+    """Враг с щитом"""
+    def __init__(self, sprite_groups: list,
+                 enemy_images: list, pos_x: int, pos_y: int,
+                 chunk_number: int,
                  is_static=False, max_distance=150,
                  direction=DIRECTION_LEFT) -> None:
+        """
+            :param sprite_groups: Группа, куда будет добавлен враг
+            :param enemy_images: Изображения врагов
+            :param pos_x: позиция по оси x
+            :param pos_y: позиция по оси y
+            :param chunk_number: номер чанка
+            :key is_static: флаг для определения движения
+            :key max_distance: максимальная дистанция на которую ходит враг в
+            одном направлении
+            :key direction: направление врага
+        """
         super().__init__(sprite_groups, enemy_images, pos_x, pos_y,
                          chunk_number, is_static, max_distance, direction)
+        # Тип врага
         self.type = 2
+        # Хп врага
         self.max_hp = 7
         self.hp = self.max_hp
+        # Максимальный объем обоймы
         self.clip_size = 2
+        # Патроны
         self.ammo = self.clip_size
+        # Скорость стрельбы
         self.shot_delay = 35
+        # Урон
         self.damage = 7
 
 
 class MarksmanEnemy(Enemy):
-    def __init__(self, sprite_groups, enemy_images,
-                 pos_x: int, pos_y: int, chunk_number,
+    """Снайпер"""
+    def __init__(self, sprite_groups: list,
+                 enemy_images: list, pos_x: int, pos_y: int,
+                 chunk_number: int,
                  is_static=False, max_distance=70,
                  direction=DIRECTION_LEFT) -> None:
+        """
+            :param sprite_groups: Группа, куда будет добавлен враг
+            :param enemy_images: Изображения врагов
+            :param pos_x: позиция по оси x
+            :param pos_y: позиция по оси y
+            :param chunk_number: номер чанка
+            :key is_static: флаг для определения движения
+            :key max_distance: максимальная дистанция на которую ходит враг в
+            одном направлении
+            :key direction: направление врага
+        """
         super().__init__(sprite_groups, enemy_images, pos_x, pos_y,
                          chunk_number, is_static, max_distance, direction)
+        # Тип врага
         self.type = 3
+        # Хп врага
         self.max_hp = 7
         self.hp = self.max_hp
+        # Максимальный объем обоймы
         self.clip_size = 1
+        # Патроны
         self.ammo = self.clip_size
+        # Скорость стрельбы
         self.shot_delay = 160
+        # Урон
         self.damage = 14
+        # Длина и ширина луча видимости игрока (больше чем у других врагов)
         self.ray.rect.w += 150
         if self.direction == DIRECTION_RIGHT:
             self.ray.x += 150
@@ -708,8 +845,7 @@ class Bullet(pygame.sprite.Sprite):
                  user_direction: Literal[0, 1],
                  pos_x, pos_y, is_enemy_bullet=False, damage=1) -> None:
         """
-        :param bullet_group: Группа, куда будет добавлен снаряд
-        :param all_sprites: Все спрайты
+        :param bullet_group: Группа спрайтов, куда будет добавлен снаряд
         :param bullet_image: Изображение снаряда
         :param user_direction: Направление игрока (оно же будет и для снаряда)
         :param pos_x: позиция по оси x
@@ -729,7 +865,7 @@ class Bullet(pygame.sprite.Sprite):
         self.direction = user_direction
         # Изменение координаты пули
         self.d_x = (1 if self.direction == DIRECTION_RIGHT else -1) * \
-                   BULLET_SPEED
+            BULLET_SPEED
         # Флаг для различия пули игрока и пули врага
         self.is_enemy_bullet = is_enemy_bullet
 
@@ -776,15 +912,13 @@ class Bullet(pygame.sprite.Sprite):
                     elif 0.4 < chance <= 0.7:
                         coin_type = 0
                     if coin_type is not None:
-                        Coin(
-                            selection_sound, drop_images[:3], coin_type, 8, 1,
-                            destructible_sprites_hit_list[0].x + 5,
-                            destructible_sprites_hit_list[0].y + 5,
-                            chunks[destructible_sprites_hit_list[
-                                0].chunk_number].coins_group,
-                            chunks[destructible_sprites_hit_list[
-                                0].chunk_number].all_sprites
-                        )
+                        Coin(selection_sound, drop_images[:3], coin_type, 8, 1,
+                             destructible_sprites_hit_list[0].x + 5,
+                             destructible_sprites_hit_list[0].y + 5,
+                             chunks[destructible_sprites_hit_list[
+                                 0].chunk_number].coins_group,
+                             chunks[destructible_sprites_hit_list[
+                                 0].chunk_number].all_sprites)
                     if destructible_sprites_hit_list[0].is_key_object:
                         return True
                     destructible_sprites_hit_list[0].kill()
@@ -828,18 +962,38 @@ class Bullet(pygame.sprite.Sprite):
 class Button:
     """Класс для создания кнопок"""
 
-    def __init__(self, width, height, pos_x, pos_y,
-                 active_image, inactive_image, text,
+    def __init__(self, width: int, height: int, pos_x: int, pos_y: int,
+                 active_image, inactive_image, text: str,
                  action=None, font_size=20):
+        """
+        :param width: ширина
+        :param height: высота
+        :param pos_x: координата позиции по оси x
+        :param pos_y: координата позиции по оси y
+        :param active_image: изображение нажатой кнопки
+        :param inactive_image: изображение неактивной кнопки
+        :key action: действие
+        :key font_size: размер шрифта
+        """
+        # Ширина
         self.width = width
+        # Высота
         self.height = height
+        # Координата позиции по оси x
         self.pos_x = pos_x
+        # Координата позиции по оси y
         self.pos_y = pos_y
+        # Изображение нажатой кнопки
         self.active_image = active_image
+        # Изображение неактивной кнопки
         self.inactive_image = inactive_image
+        # Текст кнопки
         self.text = text
+        # Действие кнопки
         self.action = action
+        # Флаг видимости
         self.is_visible = True
+        # Размер шрифта
         self.font_size = font_size
 
     def draw(self, screen):
@@ -891,11 +1045,14 @@ class Ray(pygame.sprite.Sprite):
         :param pos_y: позиция по оси y
         """
         super().__init__()
+        # Позиция по оси x
         if direction:
             self.x = pos_x
         else:
             self.x = pos_x - 300
+        # Позиция по оси y
         self.y = pos_y
+        # Фигура луча
         self.rect = pygame.Rect(self.x, self.y, 300, 1)
         # Направление луча
         self.direction = direction
@@ -1027,31 +1184,42 @@ class ImprovementScales:
 
 
 class ImprovementScale:
-
-    def __init__(self, pos_x, pos_y, width, height,
-                 border_width, scale_name, cur):
+    """Класс изображения шкалы прокачки"""
+    def __init__(self, pos_x: int, pos_y: int, width: int, height: int,
+                 border_width: int, scale_name: str, cur: sqlite3.Cursor):
+        """
+        :param pos_x: координата по оси x
+        :param pos_y: координата по оси y
+        :param width: ширина
+        :param height: высота
+        :param border_width: ширина границы
+        :param scale_name: название шкалы прокачки
+        :param cur: курсор базы данных
+        """
+        # Имя шкалы
         self.scale_name = scale_name
-
+        # Стадия прокачки
         self.stage = cur.execute(
             f'SELECT {scale_name} FROM Scales'
         ).fetchone()[0]
-
+        # Темная полоска (фигура)
         self.external_rect = pygame.Rect(
             pos_x, pos_y, width * 0.2 * self.stage, height
         )
+        # Светлая полоска (фигура)
         self.internal_rect = pygame.Rect(
             pos_x + border_width, pos_y + border_width,
             width * 0.2 * self.stage - (border_width * 2),
             height - (border_width * 2)
         )
-
+        # Текущая цена
         self.current_cost = cur.execute(
             f'SELECT {scale_name} FROM Scales_costs WHERE Id = '
             f'{self.stage + 1}'
         ).fetchone()[0]
-
+        # Значение изменения характеристики
         self.delta_value = cur.execute(
             f'SELECT {scale_name} FROM Scales_delta'
         ).fetchone()[0]
-
+        # Максимальная ширина
         self.max_width = width
