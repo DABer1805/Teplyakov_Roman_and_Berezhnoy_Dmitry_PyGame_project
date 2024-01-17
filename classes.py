@@ -874,10 +874,27 @@ class Bullet(pygame.sprite.Sprite):
         # Флаг для различия пули игрока и пули врага
         self.is_enemy_bullet = is_enemy_bullet
 
-    def update(self, player, destructible_groups, indestructible_groups,
-               destroy_sounds, hit_sounds, player_group, camera,
-               screen, drop_images, selection_sound, chunks):
-        """ Перемещение снаряда """
+    def update(
+            self, player: Player, destructible_groups: pygame.sprite.Group,
+            indestructible_groups: pygame.sprite.Group,
+            destroy_sounds: list, hit_sounds: list,
+            player_group: pygame.sprite.Group, camera: Camera,
+            screen: pygame.Surface, coin_images: list,
+            coin_selection_sound: pygame.mixer.Sound, chunks: list
+    ) -> bool:
+        """ Перемещение снаряда
+        :param player: экземпляр класса игрока
+        :param destructible_groups: группа разрушаемых спрайтов
+        :param indestructible_groups: группа неразрушимых спрайтов
+        :param destroy_sounds: список разрушения блоков или смерти врагов
+        :param hit_sounds: список звуков попаданий по блокам или врагам
+        :param player_group: группа спрайта игрока
+        :param camera: экземпляр класса камеры
+        :param screen: окно приложения
+        :param coin_images: изображения монетки
+        :param coin_selection_sound: звук подбора монеты
+        :param chunks: список чанков
+        """
         self.destroy_timer -= 1
         if not self.destroy_timer:
             hit_sounds[0].play()
@@ -917,8 +934,8 @@ class Bullet(pygame.sprite.Sprite):
                     elif 0.4 < chance <= 0.7:
                         coin_type = 0
                     if coin_type is not None:
-                        Coin(selection_sound, drop_images[:3], coin_type, 8, 1,
-                             destructible_sprites_hit_list[0].x + 5,
+                        Coin(coin_selection_sound, coin_images[:3], coin_type,
+                             8, 1, destructible_sprites_hit_list[0].x + 5,
                              destructible_sprites_hit_list[0].y + 5,
                              chunks[destructible_sprites_hit_list[
                                  0].chunk_number].coins_group,

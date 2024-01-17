@@ -26,13 +26,13 @@ from classes import Player, Camera, Bullet, Button, Chunk, ImprovementScales, \
 # Задаём параметры приложения
 pygame.init()
 pygame.key.set_repeat(200, 70)
-
+# Экран
 screen = pygame.display.set_mode((WIDTH, HEIGHT), RESIZABLE)
-
+# Виртуальная поверхность
 virtual_surface = pygame.Surface((WIDTH, HEIGHT))
-
+# Размеры экрана
 current_size = screen.get_size()
-
+# Экземпляр часов
 clock = pygame.time.Clock()
 
 # Прячем родной курсор
@@ -45,14 +45,14 @@ pygame.mixer.music.play(loops=-1)
 # Игрок
 player: Optional[Player] = None
 
+# Группа спрайтов пуль
 bullet_group = pygame.sprite.Group()
 
 
 def load_image(filename: str) -> pygame.Surface:
     """ Загрузчик изображений
-
-    :param filename: Название изображения, которое загружаем
-    :return: Возвращаем загружаемое изображение
+    :param filename: название изображения, которое загружаем
+    :return: возвращает загружаемое изображение
     """
 
     # Путь к файлу
@@ -68,6 +68,9 @@ def load_image(filename: str) -> pygame.Surface:
 
 
 def load_sound(filename: str):
+    """Загрузка звукового файла
+    :param filename: имя звукового файла
+    """
     # Путь к файлу
     fullname = os.path.join('data', 'sounds', filename)
     try:
@@ -88,8 +91,8 @@ def grouper(iterable, n):
 def load_level(filename: str):
     """ Загрузчик уровня из -txt файла
 
-    :param filename: Название файла, в котором лежит уровень
-    :return: Возвращаем уровень в виде списка, где каждый элемент - один
+    :param filename: название файла, в котором лежит уровень
+    :return: возвращаем уровень в виде списка, где каждый элемент - один
     ряд уровня, где символами обозначены тайлы и противники с игроком
     """
 
@@ -114,8 +117,11 @@ def load_level(filename: str):
                              level_map)))
 
 
-def generate_level(level_map):
-    """ Генерация уровня """
+def generate_level(level_map) -> tuple:
+    """ Генерация уровня
+
+    :return: (Player, int, int, list[Chunk])
+    """
     global level_x, level_y, player_group
     player_group = pygame.sprite.Group()
     chunks = []
@@ -130,7 +136,11 @@ def generate_level(level_map):
     return player, level_x, level_y, chunks
 
 
-def get_enemies_amount(filename: str):
+def get_enemies_amount(filename: str) -> tuple:
+    """Получение количества врагов на уровне
+
+    :param filename: имя файла уровня
+    """
     # Путь к файлу
     fullname = os.path.join('data', filename)
     # Читаем уровень, убирая символы перевода строки
@@ -155,12 +165,13 @@ def print_text(text: str, pos_x: int, pos_y: int,
                font_size: int = 30, center=False) -> None:
     """ Отрисовка текста на экране
 
-    :param text: Текст, который будет отображён на экране
-    :param pos_x: x - координата текста
-    :param pos_y: y - координата текста
-    :param font_color: Цвет, в который будет окрашен текст
-    :param font_name: Название шрифта, который будет использован
-    :param font_size: Размер шрифта
+    :param text: текст, который будет отображён на экране
+    :param pos_x: x координата текста
+    :param pos_y: y координата текста
+    :param font_color: цвет, в который будет окрашен текст
+    :param font_name: название шрифта, который будет использован
+    :param font_size: размер шрифта
+    :param center: расположение
     """
     # Выбранный шрифт
     font = pygame.font.SysFont(font_name, font_size)
@@ -173,7 +184,8 @@ def print_text(text: str, pos_x: int, pos_y: int,
         virtual_surface.blit(text_surface, text_rect)
 
 
-def show_level_info():
+def show_level_info() -> None:
+    """Отображение информации об уровне"""
     print_text(str(current_level), 58, 57, center=True)
     print_text(str(LEVELS_REWARD[current_level]), 180, 107, font_size=25)
     print_text(str(enemies_amount[0]), 115, 239, font_size=16, center=True)
@@ -274,7 +286,7 @@ def pil_image_to_surface(pil_image: Image) -> pygame.Surface:
     """ Преобразователь PIL картинки в поверхность PyGame
 
     :param pil_image: PIL картинка, которую необходимо преобразовать
-    :return: Возвращает поверхность (нужно, чтобы PyGame мог работать с
+    :return: возвращает поверхность (нужно, чтобы PyGame мог работать с
     данной картинкой)
     """
 
@@ -324,6 +336,7 @@ def get_screenshot() -> pygame.Surface:
     )
 
 
+# Файл и установка иконки программы
 icon = load_image('icon.png')
 pygame.display.set_icon(icon)
 
@@ -595,20 +608,24 @@ pause = False
 # Текущий экран
 current_menu = 0
 
+# Блюр изображение игры
 blured_background_image = None
-
+# Текущая категория улучшающих шкал
 current_characteristics_target = 'ak-47'
-
+# Текущая характеристика улучшений
 current_characteristics_target_idx = 0
 
+# Флаг работы уровня
 start = False
-camera = False
+# Переменная камеры
+camera = None
+# Переменная подключения к БД
 con = None
 
-hp_damage_timer = 0
-shield_damage_timer = 0
+# Индекс текущей страницы руководства
 current_guide_index = 0
 
+# Изображения руководства
 guide_list = [
     load_image('guide_image_1.png'), load_image('guide_image_2.png'),
     load_image('guide_image_3.png'), load_image('guide_image_4.png'),
@@ -616,15 +633,18 @@ guide_list = [
     load_image('guide_image_7.png'), load_image('guide_image_8.png')
 ]
 
+# Массив чанков
 chunks = []
 
 
-def start_game():
+def start_game() -> None:
+    """Запуск уровня"""
     global player, start, chunks, camera
-    # Игрок, размер уровня в ширину и в высоту
+    # Игрок, размер уровня в ширину и в высоту, список чанков
     player, level_x, level_y, chunks = generate_level(
         load_level(f'level_{current_level}.txt')
     )
+    # Экземпляр класса камеры
     camera = Camera(player)
     player.rect.x += camera.dx
     player.rect.y += camera.dy
@@ -632,7 +652,8 @@ def start_game():
     buttons.clear()
 
 
-def open_endgame_menu():
+def open_endgame_menu() -> None:
+    """Открытие меню смерти"""
     global start, current_menu
     buttons.append(Button(
         151, 31, 324, 240,
@@ -644,7 +665,8 @@ def open_endgame_menu():
     start = False
 
 
-def open_victory_menu():
+def open_victory_menu() -> None:
+    """Открытие меню победы"""
     global start, current_menu
     buttons.append(Button(
         151, 31, 324, 240,
@@ -656,7 +678,8 @@ def open_victory_menu():
     start = False
 
 
-def open_guide_menu():
+def open_guide_menu() -> None:
+    """Открытие раздела 'Руководство'"""
     global current_menu
     buttons.clear()
     buttons.append(
@@ -671,18 +694,19 @@ def open_guide_menu():
         21, 21, 585, 200,
         ACTIVE_RIGHT_SHIFT_BUTTON_IMAGE,
         INACTIVE_RIGHT_SHIFT_BUTTON_IMAGE,
-        '', partial(shift_guide_idx, 1)
+        '', partial(shift_guide_index, 1)
     ))
     buttons.append(Button(
         21, 21, 185, 200,
         ACTIVE_LEFT_SHIFT_BUTTON_IMAGE,
         INACTIVE_LEFT_SHIFT_BUTTON_IMAGE,
-        '', partial(shift_guide_idx, 0)
+        '', partial(shift_guide_index, 0)
     ))
     current_menu = 6
 
 
 def return_to_pause_menu():
+    """Открытие меню паузы"""
     global current_menu, pause
     del buttons[-3:]
     if con is not None:
@@ -709,7 +733,8 @@ def return_to_pause_menu():
     pause = True
 
 
-def return_to_main_menu():
+def return_to_main_menu() -> None:
+    """Открытие главного меню"""
     global buttons, current_menu, pause, current_menu
     del buttons[-2:]
     buttons = [
@@ -729,13 +754,14 @@ def return_to_main_menu():
             151, 31, 70, 240,
             ACTIVE_BUTTON_IMAGE,
             INACTIVE_BUTTON_IMAGE,
-            'Выход', quit
+            'Выход', quit_app
         )
     ]
     current_menu = 0
 
 
-def open_characteristics_menu():
+def open_characteristics_menu() -> None:
+    """Открытие меню улучшения характеристик"""
     global buttons, current_menu, improvement_scales, con
     del buttons[-3:]
     con = sqlite3.connect('DataBase.sqlite')
@@ -781,23 +807,28 @@ def open_characteristics_menu():
         21, 21, WIDTH // 2 + 103, 222,
         ACTIVE_RIGHT_SHIFT_BUTTON_IMAGE,
         INACTIVE_RIGHT_SHIFT_BUTTON_IMAGE,
-        '', partial(shift_characteristics_idx, 1)
+        '', partial(shift_characteristics_index, 1)
     ))
     buttons.append(Button(
         21, 21, WIDTH // 2 - 135, 222,
         ACTIVE_LEFT_SHIFT_BUTTON_IMAGE,
         INACTIVE_LEFT_SHIFT_BUTTON_IMAGE,
-        '', partial(shift_characteristics_idx, 0)
+        '', partial(shift_characteristics_index, 0)
     ))
 
 
-def shift_characteristics_idx(direction):
+def shift_characteristics_index(arrow_direction: int) -> None:
+    """Изменение окна шкал улучшения для кнопок
+    :param arrow_direction: направление стрелки 0 | 1
+    """
     global current_characteristics_target_idx, current_characteristics_target
-    for button in improvement_scales[
+    # Делаем кнопки невидимыми
+    for butt in improvement_scales[
         current_characteristics_target
     ].upgrade_buttons:
-        button.is_visible = False
-    if direction == 0:
+        butt.is_visible = False
+    # Меняем индекс словаря с улучшениями
+    if arrow_direction == 0:
         current_characteristics_target_idx -= 1
         if current_characteristics_target_idx < 0:
             current_characteristics_target_idx = len(improvement_scales) - 1
@@ -808,18 +839,22 @@ def shift_characteristics_idx(direction):
     current_characteristics_target = list(improvement_scales.keys())[
         current_characteristics_target_idx
     ]
-    for index, button in enumerate(improvement_scales[
-                                       current_characteristics_target
-                                   ].upgrade_buttons):
+    # Отображаем кнопки с нового окна
+    for scale_index, butt in enumerate(
+            improvement_scales[current_characteristics_target].upgrade_buttons
+    ):
         if improvement_scales[
             current_characteristics_target
-        ].scale_objects[index].current_cost != 'max':
-            button.is_visible = True
+        ].scale_objects[scale_index].current_cost != 'max':
+            butt.is_visible = True
 
 
-def shift_guide_idx(direction):
+def shift_guide_index(arrow_direction: int) -> None:
+    """Смена индекса окна руководства
+    :param arrow_direction: направление стрелки 0 | 1
+    """
     global current_guide_index
-    if direction == 0:
+    if arrow_direction == 0:
         current_guide_index -= 1
         if current_guide_index < 0:
             current_guide_index = len(guide_list) - 1
@@ -829,7 +864,8 @@ def shift_guide_idx(direction):
             current_guide_index = 0
 
 
-def continue_game():
+def continue_game() -> None:
+    """Выход из паузы"""
     global pause
     PAUSE_STOP_SOUND.play(loops=-1)
     del buttons[-3:]
@@ -842,16 +878,25 @@ def continue_game():
         pause = False
 
 
-def draw_arrow(screen, image, x, y):
-    screen.blit(image, (x, y))
+def draw_arrow(game_screen: pygame.Surface, image,
+               pos_x: int, pos_y: int) -> None:
+    """Отрисовка стрелки
+    :param game_screen: виртуальная поверхность(окно) игры
+    :param image: изображение курсора
+    :param pos_x: позиция по оси x
+    :param pos_y: позиция по оси y
+    """
+    game_screen.blit(image, (pos_x, pos_y))
 
 
-def quit():
+def quit_app() -> None:
+    """Выход из приложения по кнопке 'Выход'"""
     global running
     running = False
 
 
-def chunks_on_screen():
+def chunks_on_screen() -> list:
+    """Координаты чанков отрисованных на экране"""
     global camera, player
     x1 = int((camera.x - (7 - player.grid_x) * 50) // (8 * 50))
     y1 = int((camera.y - (7 - player.grid_y) * 50) // (8 * 50))
@@ -874,29 +919,30 @@ def chunks_on_screen():
     return result
 
 
+# Текущий выбранный уровень
 current_level = 1
+# Количество врагов на выбранном уровне
 enemies_amount = get_enemies_amount(f'level_{current_level}.txt')
 
 
-def update_level_info(button_number):
+def update_level_info(button_number) -> None:
+    """Обновление информации об уровне"""
     global current_level, enemies_amount
     current_level = button_number
     enemies_amount = get_enemies_amount(f'level_{current_level}.txt')
 
 
-def select_level():
+def select_level() -> None:
     global current_menu, buttons, pause, start, player
     pause, start = False, False
     if player is not None:
         # Подключаемся к базе данных
         con = sqlite3.connect('DataBase.sqlite')
         cur = con.cursor()
-        cur.execute(
-            f'UPDATE Player_data '
-            f'SET Coins = {player.coins}'
-        )
+        cur.execute(f"UPDATE Player_data SET Coins = {player.coins}")
         con.commit()
         con.close()
+    # Очищаем список кнопок
     buttons.clear()
     buttons.append(
         Button(
@@ -931,34 +977,47 @@ def select_level():
     current_menu = 3
 
 
+# Список кнопок
 buttons = []
+# Открываем главное меню
 return_to_main_menu()
 
+# Кадры
 frame = 0
+# Направление игрока
 direction = 0
+# Флаг проверки стоит ли игрок на земле
 on_ground = True
 
 # Игровой цикл
 while running:
 
     for event in pygame.event.get():
+        # Выход из приложения
         if event.type == pygame.QUIT:
             running = False
+        # Изменение размеров окна
         if event.type == VIDEORESIZE:
             current_size = event.size
+        # Проверки для кнопок движения при условии старта уровня
         if start and event.type == pygame.KEYDOWN:
+            # Кнопка прыжка
             if event.key == pygame.K_SPACE:
                 if on_ground:
                     jump_counter = 20
                     on_ground = False
+            # Движение влево
             if event.key == pygame.K_a:
                 direction = 1
                 player.direction = DIRECTION_LEFT
+            # Движение вправо
             if event.key == pygame.K_d:
                 direction = 2
                 player.direction = DIRECTION_RIGHT
+            # Кнопка паузы
             if event.key == pygame.K_ESCAPE:
                 pause = not pause
+                # Проверка находится ли пользователь в меню паузы или в игре
                 if pause:
                     blured_background_image = get_screenshot()
                     return_to_pause_menu()
@@ -969,25 +1028,35 @@ while running:
                         return_to_pause_menu()
                     elif current_menu == 2:
                         continue_game()
+        # Отжата кнопка движения влево или вправо
         if start and event.type == pygame.KEYUP:
             if event.key == pygame.K_a or event.key == pygame.K_d:
                 direction = 0
+        # Нажата кнопка мыши
         if event.type == pygame.MOUSEBUTTONDOWN:
+            # Кнопка выстрела на ЛКМ
             if event.button == 1:
                 button_pushed = True
+            # Кнопка перезарядки на ПКМ
             elif event.button == 3:
+                # Проверка на полноту обоймы
                 if player.ammo != player.clip_size:
                     player.ammo = 0
                     RECHARGE_SOUND.play()
                     player.recharge_timer = 120
+        # Кнопка мыши отжата и если это ЛКМ, стрельба прекращается
         if event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:
                 button_pushed = False
+    # Запущен уровень
     if start:
+        # Уровень не стоит на паузе
         if not pause:
+            # Выстрел если нет задержки стрельбы и есть патроны
             if not player.timer:
                 if button_pushed and player.ammo:
                     player.ammo -= 1
+                    # Определение направления и координаты пули
                     if player.direction == DIRECTION_LEFT:
                         x = player.x - BULLET_WIDTH
                     else:
@@ -1001,22 +1070,31 @@ while running:
                         damage=player.damage
                     )
                     player.timer = player.shot_delay
+            # Уменьшаем таймер
             else:
                 player.timer -= 1
-
+            # Проверка таймера перезарядки
             if player.recharge_timer:
+                # отнимаем значение таймера
                 player.recharge_timer -= 1
+                # Если таймер вышел
                 if player.recharge_timer == 0:
+                    # восполняем обойму
                     player.ammo = player.clip_size
+            # Перезарядка, если кончились патроны
             elif not player.ammo:
                 RECHARGE_SOUND.play()
                 player.recharge_timer = 120
 
+            # Группа разрушаемых спрайтов
             destructible_groups = pygame.sprite.Group()
+            # Группа не разрушаемых спрайтов
             indestructible_groups = pygame.sprite.Group()
-
+            # Группа для определенно взятых спрайтов
             target_group = pygame.sprite.Group()
 
+            # Пробегаемся по чанкам, которые отрисованы и формируем группы
+            # спрайтов
             for chunk_idx in chunks_on_screen():
                 destructible_groups.add(chunks[chunk_idx].boxes_group)
                 destructible_groups.add(chunks[chunk_idx].enemies_group)
@@ -1034,8 +1112,10 @@ while running:
                      ARMORED_ENEMY_SHOT_SOUND, MARKSMAN_ENEMY_SHOT_SOUND],
                     bullet_group, target_group, ENEMY_BULLET_IMAGE
                 )
-
+            # Обновляем пули
             for bullet in bullet_group:
+                # Если вернет True, в случае для уровней с реактором,
+                # то работает условие победы на уровне
                 if bullet.update(
                         player,
                         destructible_groups,
@@ -1046,32 +1126,43 @@ while running:
                         virtual_surface, COINS_SHEETS, COIN_SELECTION_SOUND,
                         chunks
                 ):
+                    # Пополняем баланс монет за победу
                     player.coins += LEVELS_REWARD[current_level]
+                    # Обновляем данные в БД
                     con = sqlite3.connect('DataBase.sqlite')
                     cur = con.cursor()
                     cur.execute(
-                        f'UPDATE Player_data '
-                        f'SET Coins = {player.coins}'
+                        f'UPDATE Player_data SET Coins = {player.coins}'
                     )
                     con.close()
+                    # Открываем меню победы
                     open_victory_menu()
             # Обновляем таймер щита игрока
             if player.shield_recharge:
                 player.shield_recharge -= 1
+                # Таймер вышел
                 if player.shield_recharge <= 0:
+                    # Увеличиваем значение щита на 1
                     player.shield += 1
+                    # Запускаем таймер восстановления щита, если их значение
+                    # неполное
                     if player.shield != player.max_shield:
                         player.shield_recharge = 150
 
             # Проверяем хп игрока
             for player in player_group:
+                # Хп все потрачено
                 if player.hp <= 0:
                     open_endgame_menu()
 
+            # Отрисовка игрока
             player_group.draw(virtual_surface)
 
+            # Проверка коллизии с группой спрайтов в чанке
             player.check_collision_sides(target_group)
+            # Проверка направления движения
             if direction == 1:
+                # Проверка на коллизию с объектами слева
                 if not any(
                         (
                                 player.collide_list[4],
@@ -1085,6 +1176,7 @@ while running:
                                 )
                         )
                 ):
+                    # Передвижение игрока и анимация движения
                     camera.update(dx=-STEP)
                     if jump_counter:
                         player.current_image_idx = 2
@@ -1093,6 +1185,7 @@ while running:
                         if player.current_image_idx == len(PLAYER_IMAGES):
                             player.current_image_idx = 0
             elif direction == 2:
+                # Проверка на коллизию с объектами справа
                 if not any(
                         (
                                 player.collide_list[5],
@@ -1106,6 +1199,7 @@ while running:
                                 )
                         )
                 ):
+                    # Движение и анимация движения игрока
                     camera.update(dx=STEP)
                     if jump_counter:
                         player.current_image_idx = 2
@@ -1113,8 +1207,10 @@ while running:
                         player.current_image_idx += 1
                         if player.current_image_idx == len(PLAYER_IMAGES):
                             player.current_image_idx = 0
+            # Индекс изображения игрока сменяется на стоячего
             else:
                 player.current_image_idx = 0
+            # Прыжок игрока
             if jump_counter:
                 jump_counter -= 1
                 if not player.collide_list[6]:
@@ -1129,15 +1225,20 @@ while running:
                 camera.update(dx, 5)
             else:
                 on_ground = True
+            # Отобразить интерфейс
             show_dashboard(player.ammo, player.coins)
+            # Смена изображения игрока исходя из направления
             if player.direction == DIRECTION_RIGHT:
                 player.image = PLAYER_IMAGES[player.current_image_idx]
             else:
                 player.image = pygame.transform.flip(
                     PLAYER_IMAGES[player.current_image_idx], True, False
                 )
+        # Игра на паузе
         else:
+            # Блюр фонового изображения
             virtual_surface.blit(blured_background_image, (0, 0))
+            # Открытие меню улучшения характеристик
             if current_menu == 1:
                 virtual_surface.blit(CHARACTERISTICS_BACKGROUND, (0, 0))
                 virtual_surface.blit(CHARACTERISTICS_IMAGES[
@@ -1166,39 +1267,52 @@ while running:
                     cur_idx = button.draw(virtual_surface)
                     if cur_idx:
                         arrow_idx = cur_idx
+            # Отображение меню паузы
             elif current_menu == 2:
                 virtual_surface.blit(PAUSE_BACKGROUND, (0, 0))
+    # Уровень не запущен
     else:
+        # Главное меню
         if current_menu == 0:
             virtual_surface.blit(MAIN_MENU_IMAGE, (0, 0))
+        # Меню выбора уровня
         elif current_menu == 3:
             virtual_surface.blit(SELECT_LEVEL_MENU_IMAGE, (0, 0))
             show_level_info()
+        # Меню смерти
         elif current_menu == 4:
             virtual_surface.blit(ENDGAME_MENU_IMAGE, (0, 0))
+        # Меню победы
         elif current_menu == 5:
             virtual_surface.blit(VICTORY_MENU_IMAGE, (0, 0))
+        # Окно руководства по игре
         elif current_menu == 6:
             virtual_surface.blit(GUIDE_MENU_IMAGE, (0, 0))
             virtual_surface.blit(guide_list[current_guide_index], (220, 39))
 
+    # Отрисовка кнопок
     for button in buttons:
         cur_idx = button.draw(virtual_surface)
         if cur_idx:
             arrow_idx = cur_idx
 
+    # Координаты курсора мыши
     x, y = pygame.mouse.get_pos()
+    # Отрисовка курсора
     if 0 < x < WIDTH and \
             0 < y < HEIGHT:
         draw_arrow(virtual_surface, ARROW_IMAGES[arrow_idx], x, y)
         arrow_idx = 0
-
+    # Изображение приложения в соответствии с заданным размером окна
     scaled_surface = transform.scale(virtual_surface, current_size)
     screen.blit(scaled_surface, (0, 0))
 
+    # Отображение изображения на экран
     pygame.display.flip()
+    # Обновление таймера по FPS
     clock.tick(FPS)
 
+    # Обновление кадров
     frame += 1
     if frame % 5 == 0:
         pygame.display.set_caption(f'"Wasteland" FPS: '
