@@ -6,7 +6,7 @@ from bullets import Bullet
 
 from constants import BULLET_WIDTH
 from tiles import *
-from entites import *
+from entities import *
 
 
 class Chunk:

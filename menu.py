@@ -2,7 +2,7 @@ from functools import partial
 from os.path import join
 
 from blit_text import blit_text
-from entites import Player
+from entities import Player
 from buttons import Button
 from constants import DIRECTION_RIGHT, DIRECTION_LEFT, GUIDE_PAGES_COORDS, \
     UPGRADE_PAGES_COORDS, DEFAULT_CURSOR, ACTIVE_CURSOR, LEVELS_AMOUNT
