@@ -44,8 +44,15 @@ class Button:
 
     def draw(self, screen):
         """Отрисовка кнопок"""
+        # Тут результат выполнения функции кнопки (В main подробно
+        # расписано про то как через аозвращаемые значения функции
+        # перекидываются параметры во избежание изменения глобальных
+        # переменных изнутри функции, так что все классы и функции в
+        # проекте полностью независимы друг от друга)
         result = None
+        # Показатель какой вид, курсора подставлять - стрелку ли палец
         arrow_idx = DEFAULT_CURSOR
+        # Спрятана ли кнопка
         if self.is_visible:
             mouse = get_pos()
             click = get_pressed()
@@ -57,16 +64,21 @@ class Button:
                 if click[0] == 1 and self.action is not None:
                     # soundButton.play()
                     delay(300)
+                    # Собираем вме параметры, которая возвращает функция
                     result = self.action()
 
                 arrow_idx = ACTIVE_CURSOR
             else:
                 screen.blit(self.inactive_image, (self.pos_x, self.pos_y))
+            # Размещаем текcт кнопки
             blit_text(
                 screen, self.text, int(self.pos_x + self.width / 2),
                 int(self.pos_y + self.height / 2 + 2),
                 font_size=self.font_size, center=True
             )
+        # Тут возвращаем однозначно вид курсора и либо распакованные
+        # параметры, которые вернула функция, либо None если она работает в
+        # "тихом режиме"
         return (arrow_idx, *result) if result is not None else (
             arrow_idx, None
         )

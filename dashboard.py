@@ -1,3 +1,5 @@
+from typing import Union
+
 from pygame import Rect
 from pygame.draw import rect
 from blit_text import blit_text
@@ -5,8 +7,23 @@ from constants import TEXT_COIN_COUNTER_COORDS
 
 
 class DashboardScale:
-    def __init__(self, pos_x, pos_y, width, height, border,
-                 cur_value, max_value, colors):
+    """ Полоска одного из показателей персонажа """
+    def __init__(self, pos_x: int, pos_y: int,
+                 width: int, height: int, border: int,
+                 cur_value: Union[float, int],
+                 max_value: Union[float, int],
+                 colors: tuple[str, str, str]):
+        """
+
+        :param pos_x:
+        :param pos_y:
+        :param width:
+        :param height:
+        :param cur_value:
+        :param max_value:
+        :param po:
+
+        """
         self.pos_x = pos_x
         self.pos_y = pos_y
         self.width = width
