@@ -1,0 +1,113 @@
+#### Модульные комнаты для быстрого наброска уровней ###
+
+
+####################### Лазарет ########################
+
+sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs
+sD*DD*Ds    sD*DD*Ds    sD*DD*Ds    sD*DD*Ds    sD*DD*Ds
+ssssssss    ssssssss    ssssssss    ssssssss    ssssssss
+s0.....s    s1.....s    s2.....s    s3.....s    s4.....s
+#......#    #......#    #......#    #......#    #......#
+#......#    #......#    #......#    #......#    #......#
+ssssssss    ssssssss    ssssssss    ssssssss    ssssssss
+sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs
+
+######################### Лифт #########################
+
+sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs
+sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs
+ssssssss    ssssssss    ssssssss    ssssssss    ssssssss
+s5.....s    s6.....s    s7.....s    s8.....s    s9.....s
+#......#    #......#    #......#    #......#    #......#
+#......#    #......#    #......#    #......#    #......#
+sss--sss    sss--sss    sss--sss    sss--sss    sss--sss
+sDs--sDs    sDs--sDs    sDs--sDs    sDs--sDs    sDs--Dss
+
+sDs--sDs    sDs--sDs    sDs--sDs    sDs--sDs    sDs--sDs
+sDs--sDs    sDs--sDs    sDs--sDs    sDs--sDs    sDs--sDs
+sss--sss    sss--sss    sss--sss    sss--sss    sss--sss
+s5.....s    s6.....s    s7.....s    s8.....s    s9.....s
+#......#    #......#    #......#    #......#    #......#
+#......#    #......#    #......#    #......#    #......#
+sss--sss    sss--sss    sss--sss    sss--sss    sss--sss
+sDs--sDs    sDs--sDs    sDs--sDs    sDs--sDs    sDs--sDs
+
+sDs--sDs    sDs--sDs    sDs--sDs    sDs--sDs    sDs--sDs
+sDs--sDs    sDs--sDs    sDs--sDs    sDs--sDs    sDs--sDs
+sss--sss    sss--sss    sss--sss    sss--sss    sss--sss
+s5.....s    s6.....s    s7.....s    s8.....s    s9.....s
+#......#    #......#    #......#    #......#    #......#
+#......#    #......#    #......#    #......#    #......#
+ssssssss    ssssssss    ssssssss    ssssssss    ssssssss
+sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs
+
+################## Реактор (сюжетный) ##################
+
+sDDDDDDs
+sDDDDDDs
+ssssssss
+sr.....s
+#......#
+#......#
+ssssssss
+sDDDDDDs
+
+####################### Корридор #######################
+
+sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs
+sD*DD*Ds    sD*DD*Ds    sD*DD*Ds    sD*DD*Ds    sD*DD*Ds
+ssssssss    ssssssss    ssssssss    ssssssss    ssssssss
+sа.....s    sб.....s    sв.....s    sг.....s    sд.....s
+#......#    #......#    #......#    #......#    #......#
+#......#    #......#    #......#    #......#    #......#
+ssssssss    ssssssss    ssssssss    ssssssss    ssssssss
+sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs
+
+sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs
+sD*DD*Ds    sD*DD*Ds    sD*DD*Ds    sD*DD*Ds    sD*DD*Ds
+ssssssss    ssssssss    ssssssss    ssssssss    ssssssss
+sе.....s    sё.....s    sж.....s    sз.....s    sи.....s
+#......#    #......#    #......#    #......#    #......#
+#......#    #......#    #......#    #......#    #......#
+ssssssss    ssssssss    ssssssss    ssssssss    ssssssss
+sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs
+
+######################## Склад #########################
+
+sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs
+sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs
+ssssssss    ssssssss    ssssssss    ssssssss    ssssssss
+sй.....s    sк.....s    sл.....s    sм.....s    sн.....s
+#......#    #......#    #......#    #......#    #......#
+#......#    #......#    #......#    #......#    #......#
+ssssssss    ssssssss    ssssssss    ssssssss    ssssssss
+sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs
+
+sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs 
+sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs 
+ssssssss    ssssssss    ssssssss    ssssssss    ssssssss 
+sо.....s    sп.....s    sр.....s    sс.....s    sт.....s
+#......#    #......#    #......#    #......#    #......#
+#......#    #......#    #......#    #......#    #......#
+ssssssss    ssssssss    ssssssss    ssssssss    ssssssss
+sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs
+
+############# Водоочистительная станция ################
+
+sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs
+sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs
+ssssssss    ssssssss    ssssssss    ssssssss    ssssssss
+sу.....s    sф.....s    sх.....s    sц.....s    sч.....s
+#......#    #......#    #......#    #......#    #......#
+#......#    #......#    #......#    #......#    #......#
+ssssssss    ssssssss    ssssssss    ssssssss    ssssssss
+sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs    sDDDDDDs
+
+sDDDDDDs    sDDDDDDs
+sDDDDDDs    sDDDDDDs
+ssssssss    ssssssss
+sш.....s    sщ.....s
+#......#    #......#
+#......#    #......#
+ssssssss    ssssssss
+sDDDDDDs    sDDDDDDs

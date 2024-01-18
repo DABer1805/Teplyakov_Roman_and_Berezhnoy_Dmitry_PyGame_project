@@ -8,7 +8,7 @@ from pygame import Surface
 from animated_sprites import Coin
 from camera import Camera
 from constants import DIRECTION_RIGHT, BULLET_SPEED
-from entites import Player
+from entities import Player
 
 
 class Bullet(Sprite):

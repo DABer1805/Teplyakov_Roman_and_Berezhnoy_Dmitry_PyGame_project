@@ -12,7 +12,7 @@ from dashboard import *
 from constants import *
 
 from chunk import Chunk
-from entites import Player
+from entities import Player
 from camera import Camera
 from bullets import Bullet
 
