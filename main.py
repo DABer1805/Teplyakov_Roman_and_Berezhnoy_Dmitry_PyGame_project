@@ -256,7 +256,7 @@ def start_game():
                            ('#2b2b2b', '#00a8f3', '#8cfffb'))
         ],
         [
-            (COIN_COUNTER_IMAGE, (600, 10)),
+            (COIN_COUNTER_IMAGE, (WIDTH * 0.75, HEIGHT * 0.025)),
             (AMMO_COUNTER_IMAGE, (10, 10)),
             (HP_COUNTER_IMAGE, (15, 70)),
             (SHIELD_COUNTER_IMAGE, (18, 111))
@@ -731,9 +731,6 @@ MENUS: dict[int, Union[Menu, GuideMenu, SelectLevelMenu]] = {
 chunks = []
 dashboard = None
 
-# Текущий выбранный уровень
-current_level = 1
-
 # Открываем главное меню
 set_main_menu()
 
@@ -888,13 +885,16 @@ while running:
                         chunks
                 ):
                     # Пополняем баланс монет за победу
-                    player.coins += LEVELS_REWARD[current_level]
+                    player.coins += LEVELS_REWARD[
+                        select_level_menu.current_level
+                    ]
                     # Обновляем данные в БД
                     con = sqlite3.connect('DataBase.sqlite')
                     cur = con.cursor()
                     cur.execute(
                         f'UPDATE Player_data SET Coins = {player.coins}'
                     )
+                    con.commit()
                     con.close()
                     # Открываем меню победы
                     current_menu, pause, start, running = set_victory_menu()

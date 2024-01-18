@@ -48,7 +48,7 @@ class Menu:
 
 
 class SelectLevelMenu(Menu):
-    """ Меню выбора уровня (тут есть прикол с отображением информауии о
+    """ Меню выбора уровня (тут есть прикол с отображением информации о
     врагах и отображение номера уровня, а также награды за уровень)
 
     """
@@ -86,15 +86,12 @@ class SelectLevelMenu(Menu):
         """ Отображаем инфу об выбранном уровне
 
         :param screen: Экран, на котором, будет отображаться вся инфа
-        :param current_level: Номер текущего уровня
         :param current_level_mark_coords: Координаты цифры, отображающей
         номаер выбранного уровня
         :param levels_reward: Словарь, который содержит номер уровня (ключ)
         и его награду (значение)
         :param current_level_reward_coords: Координаты цифры, отображающей
         награду за текущий уровень
-        :param enemies_amount: Здесь содержится информация о количестве
-        врагов каждого типа
         :param enemies_info_coords: Координаты цифры, отображающей
         количество врага определенного типа, хранятся в виде списка для
         каждого типа врага
@@ -145,7 +142,7 @@ class SelectLevelMenu(Menu):
 
 
 class GuideMenu(Menu):
-
+    """ Меню руководства """
     def __init__(self, button_settings, background_image, guide_list):
         super().__init__(button_settings, background_image)
         self.buttons[1].action = partial(self.shift_guide_index,
@@ -179,6 +176,7 @@ class GuideMenu(Menu):
 
 
 class UpgradeMenu(Menu):
+    """ Меню прокачки """
     def __init__(self, button_settings, background_image,
                  improvement_scales) -> None:
         super().__init__(button_settings, background_image)
@@ -218,6 +216,7 @@ class UpgradeMenu(Menu):
 
 
 class ImprovementScales:
+    """ Страница окна прокачки """
 
     def __init__(
             self, image, scale_objects, active_upgrade_button_image,

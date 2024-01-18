@@ -1,6 +1,6 @@
 from typing import Union
 
-from pygame import Rect
+from pygame import Rect, Surface
 from pygame.draw import rect
 from blit_text import blit_text
 from constants import TEXT_COIN_COUNTER_COORDS
@@ -15,13 +15,14 @@ class DashboardScale:
                  colors: tuple[str, str, str]):
         """
 
-        :param pos_x:
-        :param pos_y:
-        :param width:
-        :param height:
-        :param cur_value:
-        :param max_value:
-        :param po:
+        :param pos_x: x - координата
+        :param pos_y: y - координата
+        :param width: Ширина
+        :param height: Высота
+        :param cur_value: Текущее значение полоски
+        :param max_value: Максимально значение полоски
+        :param colors: Цвета полоски (их 3, чтоб было красиво, типа
+        рамочки двойной)
 
         """
         self.pos_x = pos_x
@@ -56,7 +57,17 @@ class DashboardScale:
 
 
 class Dashboard:
-    def __init__(self, scales, images, coins):
+    """ Интерфейс с полосками параметров персонажа и счетчиком монеток """
+    def __init__(self, scales: list[DashboardScale],
+                 images: list[tuple[Surface, tuple[int, int]]],
+                 coins: int):
+        """
+
+        :param scales: Полосочки параметров
+        :param images: Кортеж (картинка, координаты)
+        :param coins: Кол-во монеток на момент создание интерфейса
+
+        """
         self.scales = scales
         self.coins = coins
         self.images = images
